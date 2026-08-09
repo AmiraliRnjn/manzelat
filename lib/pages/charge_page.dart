@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'customer_info_page.dart';
 import '../mode.dart';
+import '../operation_type.dart';
 
 class ChargePage extends StatelessWidget {
   const ChargePage({super.key});
@@ -25,6 +26,7 @@ class ChargePage extends StatelessWidget {
                     MaterialPageRoute(
                       builder: (_) => const CustomerInfoPage(
                         mode: Mode.optional,
+                        operationType: OperationType.charge,
                       ),
                     ),
                   );
@@ -49,6 +51,7 @@ class ChargePage extends StatelessWidget {
                     MaterialPageRoute(
                       builder: (_) => const CustomerInfoPage(
                         mode: Mode.noNational,
+                        operationType: OperationType.charge,
                       ),
                     ),
                   );
@@ -73,6 +76,7 @@ class ChargePage extends StatelessWidget {
                     MaterialPageRoute(
                       builder: (_) => const CustomerInfoPage(
                         mode: Mode.noManzelat,
+                        operationType: OperationType.charge,
                       ),
                     ),
                   );
@@ -97,6 +101,7 @@ class ChargePage extends StatelessWidget {
                     MaterialPageRoute(
                       builder: (_) => const CustomerInfoPage(
                         mode: Mode.all,
+                        operationType: OperationType.charge,
                       ),
                     ),
                   );

@@ -2,16 +2,19 @@ import 'package:flutter/material.dart';
 import 'camera_page.dart';
 import '../card_type.dart';
 import '../mode.dart';
+import '../operation_type.dart';
 import 'optional_cards_page.dart';
 import '../models/customer_data.dart';
 
 class CustomerInfoPage extends StatefulWidget {
 
   final Mode mode;
+  final OperationType operationType;
 
   const CustomerInfoPage({
     super.key,
     required this.mode,
+    required this.operationType,
   });
 
   @override
@@ -45,6 +48,7 @@ class _CustomerInfoPageState extends State<CustomerInfoPage> {
 
               decoration: const InputDecoration(
                 labelText: 'نام و نام خانوادگی',
+                hintText: 'مثال: علی رضایی',
                 border: OutlineInputBorder(),
               ),
 
@@ -59,12 +63,14 @@ class _CustomerInfoPageState extends State<CustomerInfoPage> {
                 if (fullNameController.text.trim().isEmpty) {
                   return;
                 }
-                
+
                 CustomerData customer = CustomerData(
 
                   fullName: fullNameController.text.trim(),
 
                   cards: [],
+
+                  operationType: widget.operationType,
 
                   );
 
@@ -85,8 +91,10 @@ class _CustomerInfoPageState extends State<CustomerInfoPage> {
 
                   case Mode.noNational:
 
-                    customer.cards.add(CardType.ticket);
-                    customer.cards.add(CardType.national);
+                  customer.cards = [
+                    CardType.ticket,
+                    CardType.national,
+                    ];
 
 
                     Navigator.push(
@@ -102,8 +110,10 @@ class _CustomerInfoPageState extends State<CustomerInfoPage> {
 
                   case Mode.noManzelat:
 
-                    customer.cards.add(CardType.ticket);
-                    customer.cards.add(CardType.manzelat);
+                  customer.cards = [
+                    CardType.ticket,
+                    CardType.manzelat,
+                    ];
 
                     Navigator.push(
                       context,
@@ -118,9 +128,11 @@ class _CustomerInfoPageState extends State<CustomerInfoPage> {
 
                   case Mode.all:
 
-                   customer.cards.add(CardType.ticket);
-                   customer.cards.add(CardType.national);
-                   customer.cards.add(CardType.manzelat);
+                  customer.cards = [
+                    CardType.ticket,
+                    CardType.national,
+                    CardType.manzelat
+                    ];
 
                     Navigator.push(
                       context,

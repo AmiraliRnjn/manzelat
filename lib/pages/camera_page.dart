@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../card_type.dart';
 import '../models/customer_data.dart';
+import '../services/storage_service.dart';
 
 class CameraPage extends StatefulWidget {
 
@@ -18,6 +19,42 @@ class CameraPage extends StatefulWidget {
 class _CameraPageState extends State<CameraPage> {
 
   int currentIndex = 0;
+
+  String? customerFolderPath;
+  bool folderReady = false;
+  String? folderError;
+
+  @override
+  void initState() {
+    super.initState();
+    _prepareCustomerFolder();
+  }
+
+  Future<void> _prepareCustomerFolder() async {
+
+    final folder = await StorageService.getCustomerFolder(
+      operationType: widget.customer.operationType,
+      customerFullName: widget.customer.fullName,
+    );
+
+    if (!mounted) return;
+
+    if (folder == null) {
+
+      setState(() {
+        folderError = 'ابتدا باید مسیر ذخیره‌سازی را در بخش «مدیریت» تنظیم کنید.';
+      });
+
+      return;
+
+    }
+
+    setState(() {
+      customerFolderPath = folder.path;
+      folderReady = true;
+    });
+
+  }
 
   String getCardName(CardType card) {
 
@@ -57,6 +94,34 @@ class _CameraPageState extends State<CameraPage> {
                 fontSize: 22,
               ),
             ),
+
+            const SizedBox(height: 12),
+
+            if (folderError != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  folderError!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+
+            if (folderReady && customerFolderPath != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  'پوشه‌ی ذخیره: $customerFolderPath',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.green,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
 
             const SizedBox(height: 20),
 
