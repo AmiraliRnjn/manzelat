@@ -1,8 +1,22 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<!--<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:tools="http://google.com">-->
+
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- دسترسی‌های لازم برای خواندن و نوشتن حافظه -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    
+    <!-- دسترسی حیاتی برای اندروید ۱۱ به بالا جهت کار با کد کاتلین شما -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage"/>
+
     <application
         android:label="first_test"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:requestLegacyExternalStorage="true"> <!-- اضافه شده برای اندروید ۱۰ -->
+        
         <activity
             android:name=".MainActivity"
             android:exported="true"

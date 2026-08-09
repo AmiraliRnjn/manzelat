@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/storage_settings_service.dart';
 import '../services/permission_service.dart';
+import '../services/storage_picker_service.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -80,6 +81,20 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
       );
 
     }
+
+  }
+
+  Future<void> _pickFolder() async {
+
+    final selectedPath = await StoragePickerService.pickStorageFolder(context);
+
+    if (selectedPath == null) {
+      return;
+    }
+
+    setState(() {
+      pathController.text = selectedPath;
+    });
 
   }
 
@@ -208,6 +223,14 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
                       fontSize: 13,
                       color: Colors.grey,
                     ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  ElevatedButton.icon(
+                    onPressed: _pickFolder,
+                    icon: const Icon(Icons.folder_open),
+                    label: const Text('انتخاب پوشه مستقل و دائمی'),
                   ),
 
                   const SizedBox(height: 12),
