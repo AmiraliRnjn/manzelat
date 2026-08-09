@@ -11,7 +11,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-
   Jalali? workDate;
 
   @override
@@ -21,7 +20,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _loadWorkDate() async {
-
     final date = await WorkDateService.getWorkDate();
 
     if (!mounted) return;
@@ -29,11 +27,9 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       workDate = date;
     });
-
   }
 
   Future<void> _pickWorkDate() async {
-
     final picked = await showPersianDatePicker(
       context: context,
       initialDate: workDate ?? Jalali.now(),
@@ -41,9 +37,7 @@ class _HomePageState extends State<HomePage> {
       lastDate: Jalali(1450, 12),
     );
 
-    if (picked == null) {
-      return;
-    }
+    if (picked == null) return;
 
     await WorkDateService.setWorkDate(picked);
 
@@ -52,26 +46,27 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       workDate = picked;
     });
-
   }
 
   @override
   Widget build(BuildContext context) {
+    const primaryBlue = Color(0xFF1565C0);
+    const lightBlue = Color(0xFF42A5F5);
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade700,
+      backgroundColor: Colors.white,
 
       appBar: AppBar(
-        title: const Text('MiCard'),
-
+        backgroundColor: primaryBlue,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: const Text('MiCard' ,style: TextStyle(color: Colors.white),),
         actions: [
-
           IconButton(
             icon: const Icon(Icons.calendar_month),
             tooltip: 'انتخاب تاریخ کاری',
             onPressed: _pickWorkDate,
           ),
-
         ],
       ),
 
@@ -79,18 +74,20 @@ class _HomePageState extends State<HomePage> {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-
             const DrawerHeader(
-              decoration: BoxDecoration(color: Colors.grey),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF1565C0), Color(0xFF42A5F5)],
+                ),
+              ),
               child: Text(
                 'منو',
-                style: TextStyle(color: Colors.white, fontSize: 22),
+                style: TextStyle(color: Colors.white, fontSize: 22,fontFamily: 'Traffic'),
               ),
             ),
-
             ListTile(
-              leading: const Icon(Icons.settings),
-              title: const Text('مدیریت'),
+              leading: const Icon(Icons.settings, color: primaryBlue),
+              title: const Text('مدیریت',style: TextStyle(fontFamily: 'Traffic'),),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
@@ -99,69 +96,116 @@ class _HomePageState extends State<HomePage> {
                 );
               },
             ),
-
           ],
         ),
       ),
 
       body: SafeArea(
-        child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-
+              // کارت تاریخ
               if (workDate != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 24),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  margin: const EdgeInsets.only(bottom: 30),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 12,
+                        offset: Offset(0, 5),
+                      ),
+                    ],
+                  ),
                   child: Column(
                     children: [
-
                       const Text(
-                        'تاریخ کاری فعال:',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 13,
-                        ),
+                        'تاریخ کاری فعال',
+                        style: TextStyle(color: Colors.grey, fontSize: 14,fontFamily: 'Traffic'),
                       ),
-
-                      const SizedBox(height: 4),
-
+                      const SizedBox(height: 6),
                       Text(
                         workDate!.formatFullDate(),
                         style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
+                          color: primaryBlue,
+                          fontFamily: 'Traffic',
+                          fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-
                     ],
                   ),
                 ),
 
-              TextButton(
-                onPressed: () {
+              const Spacer(),
+
+              // دکمه شارژ
+              _buildMainButton(
+                text: 'شارژ',
+                onTap: () {
                   Navigator.pushNamed(context, '/first');
                 },
-                style: TextButton.styleFrom(
-                  backgroundColor: Colors.white,
-                ),
-                child: const Text('شارژ'),
+                primaryBlue: primaryBlue,
+                lightBlue: lightBlue,
               ),
 
               const SizedBox(height: 20),
 
-              TextButton(
-                onPressed: () {
+              // دکمه صدور
+              _buildMainButton(
+                text: 'صدور',
+                onTap: () {
                   Navigator.pushNamed(context, '/second');
                 },
-                style: TextButton.styleFrom(
-                  backgroundColor: Colors.white,
-                ),
-                child: const Text('صدور'),
+                primaryBlue: primaryBlue,
+                lightBlue: lightBlue,
               ),
 
+              const Spacer(),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMainButton({
+    required String text,
+    required VoidCallback onTap,
+    required Color primaryBlue,
+    required Color lightBlue,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          gradient: LinearGradient(colors: [primaryBlue, lightBlue]),
+          boxShadow: [
+            BoxShadow(
+              color: primaryBlue.withOpacity(0.3),
+              blurRadius: 10,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Text(
+            text,
+            style: const TextStyle(
+              color: Colors.white,
+              fontFamily: 'Traffic',
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
       ),
