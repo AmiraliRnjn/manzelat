@@ -3,4 +3,5 @@ enum Mode {
   noNational,
   noManzelat,
   all,
+  export
 }

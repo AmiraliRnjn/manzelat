@@ -107,6 +107,23 @@ class _CustomerInfoPageState extends State<CustomerInfoPage> {
                     );
 
                     break;
+                    
+                 case Mode.export:
+
+                    customer.cards.add(CardType.national);
+                    customer.cards.add(CardType.manzelat);
+
+
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CameraPage(
+                          customer: customer,
+                        ),
+                      ),
+                    );
+
+                    break;
 
                   case Mode.noManzelat:
 

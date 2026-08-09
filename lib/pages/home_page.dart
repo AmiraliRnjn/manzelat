@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:manzelat/operation_type.dart';
 import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import 'settings_page.dart';
+import 'customer_info_page.dart';
 import '../services/work_date_service.dart';
+import '../mode.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -161,7 +164,15 @@ class _HomePageState extends State<HomePage> {
               _buildMainButton(
                 text: 'صدور',
                 onTap: () {
-                  Navigator.pushNamed(context, '/second');
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const CustomerInfoPage(
+                        mode: Mode.export,
+                        operationType: OperationType.issue,
+                      ),
+                    ),
+                  );
                 },
                 primaryBlue: primaryBlue,
                 lightBlue: lightBlue,
