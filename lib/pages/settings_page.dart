@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import '../services/storage_settings_service.dart';
 import '../services/permission_service.dart';
 import '../services/storage_picker_service.dart';
+import '../services/work_date_service.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -16,6 +18,7 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
 
   bool isLoading = true;
   bool hasPermission = false;
+  Jalali? workDate;
 
   @override
   void initState() {
@@ -51,10 +54,12 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
 
     final path = await StorageSettingsService.getStoragePath();
     final permission = await PermissionService.hasStoragePermission();
+    final date = await WorkDateService.getWorkDate();
 
     setState(() {
       pathController.text = path ?? '';
       hasPermission = permission;
+      workDate = date;
       isLoading = false;
     });
 
@@ -81,6 +86,29 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
       );
 
     }
+
+  }
+
+  Future<void> _pickWorkDate() async {
+
+    final picked = await showPersianDatePicker(
+      context: context,
+      initialDate: workDate ?? Jalali.now(),
+      firstDate: Jalali(1400, 1),
+      lastDate: Jalali(1450, 12),
+    );
+
+    if (picked == null) {
+      return;
+    }
+
+    await WorkDateService.setWorkDate(picked);
+
+    if (!mounted) return;
+
+    setState(() {
+      workDate = picked;
+    });
 
   }
 
@@ -264,12 +292,21 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
 
                   const SizedBox(height: 8),
 
-                  const Text(
-                    'این بخش در مرحله بعد (سیستم تقویم شمسی) اضافه می‌شود.',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
+                  Text(
+                    workDate != null
+                        ? workDate!.formatFullDate()
+                        : 'هنوز تاریخی انتخاب نشده است.',
+                    style: const TextStyle(
+                      fontSize: 15,
                     ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  ElevatedButton.icon(
+                    onPressed: _pickWorkDate,
+                    icon: const Icon(Icons.calendar_month),
+                    label: const Text('تغییر تاریخ کاری'),
                   ),
 
                 ],
