@@ -10,7 +10,7 @@ class ChargePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 255, 120, 143),
+      backgroundColor: const Color.fromARGB(255, 199, 196, 196),
 
       body: SafeArea(
         child: Center(
@@ -33,7 +33,7 @@ class ChargePage extends StatelessWidget {
                 },
 
                 style: TextButton.styleFrom(
-                  backgroundColor: Colors.lightGreenAccent.shade100,
+                  backgroundColor: Colors.lightBlueAccent.shade100,
                 ),
 
                 child: const Text(
@@ -83,7 +83,7 @@ class ChargePage extends StatelessWidget {
                 },
 
                 style: TextButton.styleFrom(
-                  backgroundColor: Colors.deepPurple,
+                  backgroundColor: Colors.lightBlueAccent.shade100,
                 ),
 
                 child: const Text(
@@ -108,7 +108,7 @@ class ChargePage extends StatelessWidget {
                 },
 
                 style: TextButton.styleFrom(
-                  backgroundColor: Colors.red.shade50,
+                  backgroundColor: Colors.lightBlueAccent.shade100,
                 ),
 
                 child: const Text(
