@@ -192,7 +192,7 @@ class _CameraPageState extends State<CameraPage> {
               children: [
                 Icon(Icons.check_circle, color: Colors.green),
                 SizedBox(width: 8),
-                Text('عملیات با موفقیت انجام شد'),
+                Text('عملیات با موفقیت انجام شد',style: TextStyle(fontSize: 20),),
               ],
             ),
             content: Text(
