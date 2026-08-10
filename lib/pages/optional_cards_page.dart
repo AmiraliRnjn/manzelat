@@ -15,6 +15,7 @@ class OptionalCardsPage extends StatefulWidget {
 class _OptionalCardsPageState extends State<OptionalCardsPage> {
   bool nationalSelected = false;
   bool manzelatSelected = false;
+  bool personalPhotoSelected = false;
 
   @override
   Widget build(BuildContext context) {
@@ -44,6 +45,15 @@ class _OptionalCardsPageState extends State<OptionalCardsPage> {
               });
             },
           ),
+            CheckboxListTile(
+            title: const Text('گرفتن عکس پرسنلی '),
+            value: personalPhotoSelected,
+            onChanged: (value) {
+              setState(() {
+                personalPhotoSelected = value!;
+              });
+            },
+          ),
 
           ElevatedButton(
             onPressed: () {
@@ -58,7 +68,9 @@ class _OptionalCardsPageState extends State<OptionalCardsPage> {
               if (manzelatSelected) {
                 widget.customer.cards.add(CardType.manzelat);
               }
-
+              if (personalPhotoSelected) {
+                widget.customer.cards.add(CardType.personalPhoto);
+              }
               Navigator.push(
                 context,
                 MaterialPageRoute(

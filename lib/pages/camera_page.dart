@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:flutter/services.dart';
+
 import '../services/storage_service.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
@@ -63,6 +65,8 @@ class _CameraPageState extends State<CameraPage> {
         return 'کارت ملی';
       case CardType.manzelat:
         return 'کارت منزلت';
+      case CardType.personalPhoto:
+        return 'عکس پرسنلی';
     }
   }
 
@@ -74,6 +78,8 @@ class _CameraPageState extends State<CameraPage> {
         return 'شماره همراه';
       case CardType.ticket:
         return 'سریال پشت کارت بلیط';
+      case CardType.personalPhoto:
+        return 'عکس پرسنلی';
     }
   }
 
@@ -247,6 +253,7 @@ class _CameraPageState extends State<CameraPage> {
                     ),
                     const Divider(height: 20),
                     ...widget.customer.cards.map((card) {
+                      if (card == CardType.personalPhoto) return SizedBox();
                       final controller = textControllers[card]!;
                       final textLength = controller.text.trim().length;
                       final showWarning = textLength > 0 && textLength != 10;
@@ -256,8 +263,11 @@ class _CameraPageState extends State<CameraPage> {
                         child: Directionality(
                           textDirection: TextDirection.rtl,
                           child: TextField(
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly
+                            ],
                             controller: controller,
-                            keyboardType: TextInputType.text,
+                            keyboardType: TextInputType.number,
                             onChanged: (value) => setDialogState(() {}),
                             decoration: InputDecoration(
                               labelText: getCardNumberTitle(card),
@@ -285,6 +295,8 @@ class _CameraPageState extends State<CameraPage> {
                 ElevatedButton(
                   onPressed: () async {
                     for (var card in widget.customer.cards) {
+                      if (card == CardType.personalPhoto) continue;
+
                       if (textControllers[card]!.text.trim().isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
@@ -325,8 +337,14 @@ class _CameraPageState extends State<CameraPage> {
                       for (var cardData in savedCardsData) {
                         final CardType type = cardData['type'];
                         final Uint8List bytes = cardData['bytes'];
-                        final String fileName = textControllers[type]!.text
-                            .trim();
+                        String fileName;
+
+                        if (type == CardType.personalPhoto) {
+                          final timestamp = DateTime.now().millisecondsSinceEpoch;
+                          fileName = '${widget.customer.fullName}_personal_$timestamp';
+                        } else {
+                          fileName = textControllers[type]!.text.trim();
+                        }
 
                         final file = File(
                           '${customerFolder.path}/$fileName.jpg',
