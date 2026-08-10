@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:share_plus/share_plus.dart';
 import '../operation_type.dart';
 import '../services/file_manager_service.dart';
@@ -440,11 +441,34 @@ class _FileManagerPageState extends State<FileManagerPage> {
 }
 
 /// صفحه‌ی ساده‌ی داخل‌اپی برای مرور فایل‌های یک پوشه‌ی مشتری —
-/// فقط برای چک کردن سریع اینکه عکس‌ها درست ذخیره شده‌اند، نه یک فایل‌منیجر کامل.
+/// با لمس هر فایل (مثلاً عکس)، همان فایل با یک اپ خارجی مناسب (گالری،
+/// نمایشگر عکس و ...) باز می‌شود؛ خود اپ چیزی را رندر نمی‌کند.
 class _FolderContentsPage extends StatelessWidget {
   final Directory folder;
 
   const _FolderContentsPage({required this.folder});
+
+  static const _imageExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.heic'];
+
+  bool _isImage(File file) {
+    final path = file.path.toLowerCase();
+    return _imageExtensions.any((ext) => path.endsWith(ext));
+  }
+
+  Future<void> _openFile(BuildContext context, File file) async {
+    final result = await OpenFilex.open(file.path);
+
+    if (result.type != ResultType.done) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'برنامه‌ای برای باز کردن این فایل پیدا نشد: ${result.message}',
+          ),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -463,9 +487,14 @@ class _FolderContentsPage extends StatelessWidget {
                 final sizeKb = (file.lengthSync() / 1024).toStringAsFixed(1);
 
                 return ListTile(
-                  leading: const Icon(Icons.insert_drive_file, color: Colors.blueGrey),
+                  leading: Icon(
+                    _isImage(file) ? Icons.image : Icons.insert_drive_file,
+                    color: Colors.blueGrey,
+                  ),
                   title: Text(FileManagerService.displayName(file)),
                   subtitle: Text('$sizeKb KB'),
+                  trailing: const Icon(Icons.open_in_new, size: 18, color: Colors.grey),
+                  onTap: () => _openFile(context, file),
                 );
               },
             ),

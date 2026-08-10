@@ -3,7 +3,7 @@ import 'package:manzelat/operation_type.dart';
 import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import 'settings_page.dart';
 import 'customer_info_page.dart';
-import 'file_manager_page.dart'; // ← خط جدید ۱: این import اضافه شد
+import 'file_manager_page.dart';
 import '../services/work_date_service.dart';
 import '../mode.dart';
 
@@ -52,10 +52,50 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  // چهار حالت نوبار پایین (به‌ترتیب همان چیزی که در آرایه‌ی items چیده می‌شود).
+  void _handleBottomNavTap(int index) {
+    switch (index) {
+      case 0: // شارژ این تاریخ
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                const FileManagerPage(operationType: OperationType.charge),
+          ),
+        );
+        break;
+
+      case 1: // شارژ
+        Navigator.pushNamed(context, '/first');
+        break;
+
+      case 2: // صدور
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const CustomerInfoPage(
+              mode: Mode.export,
+              operationType: OperationType.issue,
+            ),
+          ),
+        );
+        break;
+
+      case 3: // صدور این تاریخ
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                const FileManagerPage(operationType: OperationType.issue),
+          ),
+        );
+        break;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     const primaryBlue = Color(0xFF1565C0);
-    const lightBlue = Color(0xFF42A5F5);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -108,6 +148,7 @@ class _HomePageState extends State<HomePage> {
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // کارت تاریخ
@@ -115,7 +156,6 @@ class _HomePageState extends State<HomePage> {
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(20),
-                  margin: const EdgeInsets.only(bottom: 30),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
@@ -145,108 +185,45 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ],
                   ),
+                )
+              else
+                const Text(
+                  'برای شروع، تاریخ کاری را از گوشه‌ی بالا انتخاب کنید.',
+                  style: TextStyle(color: Colors.grey, fontFamily: 'Traffic'),
+                  textAlign: TextAlign.center,
                 ),
-
-              const Spacer(),
-
-              // دکمه شارژ
-              _buildMainButton(
-                text: 'شارژ',
-                onTap: () {
-                  Navigator.pushNamed(context, '/first');
-                },
-                primaryBlue: primaryBlue,
-                lightBlue: lightBlue,
-              ),
-
-              const SizedBox(height: 20),
-
-              // دکمه صدور
-              _buildMainButton(
-                text: 'صدور',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const CustomerInfoPage(
-                        mode: Mode.export,
-                        operationType: OperationType.issue,
-                      ),
-                    ),
-                  );
-                },
-                primaryBlue: primaryBlue,
-                lightBlue: lightBlue,
-              ),
-
-              const Spacer(),
             ],
           ),
         ),
       ),
 
-      // ▼▼▼ خط‌های جدید ۲: این بخش کامل (bottomNavigationBar) اضافه شد ▼▼▼
+      // نوار پایین: شارژ/صدور (که قبلاً وسط صفحه بودند) کنار «این تاریخ»‌ها آمدند.
+      // ترتیب آرایه‌ی items عمداً همین‌طور چیده شده تا با راست‌به‌چپ بودن صفحه،
+      // نمایش نهایی از چپ به راست این شود:
+      // صدور این تاریخ ، صدور ، شارژ ، شارژ این تاریخ
       bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
         selectedItemColor: primaryBlue,
-        onTap: (index) {
-          final operationType =
-              index == 0 ? OperationType.charge : OperationType.issue;
-
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => FileManagerPage(operationType: operationType),
-            ),
-          );
-        },
+        unselectedItemColor: Colors.grey,
+        onTap: _handleBottomNavTap,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.folder),
             label: 'شارژ این تاریخ',
           ),
           BottomNavigationBarItem(
+            icon: Icon(Icons.flash_on),
+            label: 'شارژ',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.badge),
+            label: 'صدور',
+          ),
+          BottomNavigationBarItem(
             icon: Icon(Icons.folder),
             label: 'صدور این تاریخ',
           ),
         ],
-      ),
-      // ▲▲▲ تا اینجا ▲▲▲
-    );
-  }
-
-  Widget _buildMainButton({
-    required String text,
-    required VoidCallback onTap,
-    required Color primaryBlue,
-    required Color lightBlue,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          gradient: LinearGradient(colors: [primaryBlue, lightBlue]),
-          boxShadow: [
-            BoxShadow(
-              color: primaryBlue.withOpacity(0.3),
-              blurRadius: 10,
-              offset: Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Center(
-          child: Text(
-            text,
-            style: const TextStyle(
-              color: Colors.white,
-              fontFamily: 'Traffic',
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
       ),
     );
   }
