@@ -85,4 +85,51 @@ class FileManagerService {
 
     return name;
   }
+
+/// فایل‌های داخل یک پوشه‌ی مشتری (برای صفحه‌ی «باز کردن پوشه»).
+  static List<File> getFilesInFolder(Directory folder) {
+    final files = folder.listSync().whereType<File>().toList();
+    files.sort((a, b) => a.path.compareTo(b.path));
+    return files;
+  }
+
+  /// تغییر نام یک پوشه یا فایل. برای فایل ZIP، پسوند .zip خودکار حفظ می‌شود.
+  static Future<FileSystemEntity> rename(
+    FileSystemEntity entity,
+    String newName,
+  ) async {
+    final sanitized = _sanitize(newName);
+    final parentPath = entity.parent.path;
+
+    var targetName = sanitized;
+    if (entity is File && entity.path.toLowerCase().endsWith('.zip')) {
+      targetName = '$sanitized.zip';
+    }
+
+    final newPath = '$parentPath${Platform.pathSeparator}$targetName';
+
+    if (entity is Directory) {
+      return entity.rename(newPath);
+    }
+
+    return (entity as File).rename(newPath);
+  }
+
+  /// حذف یک پوشه (با همه‌ی محتویاتش) یا یک فایل تکی.
+  static Future<void> delete(FileSystemEntity entity) async {
+    if (entity is Directory) {
+      await entity.delete(recursive: true);
+      return;
+    }
+
+    await (entity as File).delete();
+  }
+
+  /// همان قانون پاکسازی نام که در StorageService استفاده شده.
+  static String _sanitize(String name) {
+    final invalidChars = RegExp(r'[\\/:*?"<>|]');
+    final cleaned = name.replaceAll(invalidChars, '').trim();
+    return cleaned.isEmpty ? 'نامشخص' : cleaned;
+  }
+
 }
