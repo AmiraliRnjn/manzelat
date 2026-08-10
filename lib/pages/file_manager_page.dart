@@ -4,6 +4,7 @@ import 'package:open_filex/open_filex.dart';
 import 'package:share_plus/share_plus.dart';
 import '../operation_type.dart';
 import '../services/file_manager_service.dart';
+import '../services/zip_share_status_service.dart';
 
 class FileManagerPage extends StatefulWidget {
   final OperationType operationType;
@@ -17,6 +18,7 @@ class FileManagerPage extends StatefulWidget {
 class _FileManagerPageState extends State<FileManagerPage> {
   List<Directory> customerFolders = [];
   List<File> zipFiles = [];
+  Set<String> sharedZipPaths = {};
   bool isLoading = true;
 
   @override
@@ -32,15 +34,21 @@ class _FileManagerPageState extends State<FileManagerPage> {
     final zips = await FileManagerService.getCustomerZipFiles(
       widget.operationType,
     );
+    final shared = await ZipShareStatusService.getSharedPaths();
 
     if (!mounted) return;
 
     setState(() {
       customerFolders = folders;
       zipFiles = zips;
+      sharedZipPaths = shared;
       isLoading = false;
     });
   }
+
+  /// آیا حداقل یک ZIP هنوز اشتراک‌گذاری نشده — برای نقطه‌ی روی خود تب ZIP.
+  bool get _hasUnsharedZip =>
+      zipFiles.any((z) => !sharedZipPaths.contains(z.path));
 
   // ------------------------------- اکشن‌های پوشه -------------------------------
 
@@ -114,6 +122,10 @@ class _FileManagerPageState extends State<FileManagerPage> {
 
     try {
       await FileManagerService.zipCustomerFolder(folder);
+
+      // ZIP تازه ساخته شده (یا بازنویسی شده) هنوز فرستاده نشده، پس اگر قبلاً
+      // علامت «اشتراک‌گذاری‌شده» داشت، پاکش می‌کنیم تا یادآور دوباره بیاد.
+      await ZipShareStatusService.clear(existingZip.path);
 
       if (!mounted) return;
 
@@ -190,7 +202,12 @@ class _FileManagerPageState extends State<FileManagerPage> {
     }
 
     try {
-      await FileManagerService.rename(zip, input.trim());
+      final renamedZip =
+          await FileManagerService.rename(zip, input.trim()) as File;
+
+      // اگر این فایل قبلاً «اشتراک‌گذاری‌شده» علامت خورده بود، همان وضعیت
+      // را روی مسیر جدید هم منتقل می‌کنیم تا یادآور بی‌جهت برنگردد.
+      await ZipShareStatusService.transfer(zip.path, renamedZip.path);
 
       if (!mounted) return;
 
@@ -220,6 +237,7 @@ class _FileManagerPageState extends State<FileManagerPage> {
 
     try {
       await FileManagerService.delete(zip);
+      await ZipShareStatusService.clear(zip.path);
 
       if (!mounted) return;
 
@@ -241,6 +259,14 @@ class _FileManagerPageState extends State<FileManagerPage> {
       [XFile(zip.path)],
       subject: FileManagerService.displayName(zip),
     );
+
+    // فقط بعد از زدن روی «اشتراک‌گذاری» یادآور کنار این فایل برداشته می‌شود.
+    await ZipShareStatusService.markAsShared(zip.path);
+
+    if (!mounted) return;
+    setState(() {
+      sharedZipPaths.add(zip.path);
+    });
   }
 
   // ----------------------------- دیالوگ‌های مشترک -----------------------------
@@ -319,10 +345,28 @@ class _FileManagerPageState extends State<FileManagerPage> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(title),
-          bottom: const TabBar(
+          bottom: TabBar(
             tabs: [
-              Tab(text: 'فایل اصلی'),
-              Tab(text: 'ZIP'),
+              const Tab(text: 'فایل اصلی'),
+              Tab(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('ZIP'),
+                    if (_hasUnsharedZip) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -405,9 +449,29 @@ class _FileManagerPageState extends State<FileManagerPage> {
         itemCount: zipFiles.length,
         itemBuilder: (context, index) {
           final zip = zipFiles[index];
+          final isUnshared = !sharedZipPaths.contains(zip.path);
 
           return ListTile(
-            leading: const Icon(Icons.folder_zip, color: Colors.deepOrange),
+            leading: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.folder_zip, color: Colors.deepOrange),
+                if (isUnshared)
+                  Positioned(
+                    right: -2,
+                    top: -2,
+                    child: Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 1.5),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
             title: Text(FileManagerService.displayName(zip)),
             trailing: PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert),
