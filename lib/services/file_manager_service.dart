@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:archive/archive_io.dart';
 import '../operation_type.dart';
 import 'storage_settings_service.dart';
 import 'work_date_service.dart';
@@ -86,7 +87,7 @@ class FileManagerService {
     return name;
   }
 
-/// فایل‌های داخل یک پوشه‌ی مشتری (برای صفحه‌ی «باز کردن پوشه»).
+  /// فایل‌های داخل یک پوشه‌ی مشتری (برای صفحه‌ی «باز کردن پوشه»).
   static List<File> getFilesInFolder(Directory folder) {
     final files = folder.listSync().whereType<File>().toList();
     files.sort((a, b) => a.path.compareTo(b.path));
@@ -99,9 +100,10 @@ class FileManagerService {
     String newName,
   ) async {
     final sanitized = _sanitize(newName);
-    final parentPath = entity.parent.path;
 
+    final parentPath = entity.parent.path;
     var targetName = sanitized;
+
     if (entity is File && entity.path.toLowerCase().endsWith('.zip')) {
       targetName = '$sanitized.zip';
     }
@@ -132,4 +134,23 @@ class FileManagerService {
     return cleaned.isEmpty ? 'نامشخص' : cleaned;
   }
 
+  // --------------------------------------------------------------------
+  // تنها متد جدید: ساخت ZIP از پوشه‌ی یک مشتری، دقیقاً کنار خودش
+  // (لازم برای گزینه‌ی «زیپ کردن» در منوی پوشه‌های اصلی)
+  // --------------------------------------------------------------------
+
+  /// از محتویات پوشه یک ZIP در همان مسیر (پوشه‌ی روز) با نام پوشه می‌سازد.
+  /// اگر ZIP هم‌نامی از قبل وجود داشته باشد، بازنویسی می‌شود.
+  static Future<File> zipCustomerFolder(Directory folder) async {
+    final name = displayName(folder);
+    final parentPath = folder.parent.path;
+    final zipPath = [parentPath, '$name.zip'].join(Platform.pathSeparator);
+
+    final encoder = ZipFileEncoder();
+    encoder.create(zipPath);
+    await encoder.addDirectory(folder, includeDirName: false);
+    encoder.close();
+
+    return File(zipPath);
+  }
 }
