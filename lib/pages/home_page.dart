@@ -3,6 +3,7 @@ import 'package:manzelat/operation_type.dart';
 import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import 'settings_page.dart';
 import 'customer_info_page.dart';
+import 'file_manager_page.dart'; // ← خط جدید ۱: این import اضافه شد
 import '../services/work_date_service.dart';
 import '../mode.dart';
 
@@ -183,6 +184,33 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
       ),
+
+      // ▼▼▼ خط‌های جدید ۲: این بخش کامل (bottomNavigationBar) اضافه شد ▼▼▼
+      bottomNavigationBar: BottomNavigationBar(
+        selectedItemColor: primaryBlue,
+        onTap: (index) {
+          final operationType =
+              index == 0 ? OperationType.charge : OperationType.issue;
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => FileManagerPage(operationType: operationType),
+            ),
+          );
+        },
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.folder),
+            label: 'شارژ این تاریخ',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.folder),
+            label: 'صدور این تاریخ',
+          ),
+        ],
+      ),
+      // ▲▲▲ تا اینجا ▲▲▲
     );
   }
 

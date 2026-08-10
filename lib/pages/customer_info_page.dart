@@ -61,13 +61,14 @@ class _CustomerInfoPageState extends State<CustomerInfoPage> {
 
                 switch (widget.mode) {
                   case Mode.optional:
+                    // مستقیم فقط کارت بلیط را برای عکاسی تنظیم می‌کنیم و به صفحه دوربین می‌رویم
+                    customer.cards = [CardType.ticket];
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => OptionalCardsPage(customer: customer),
+                        builder: (_) => CameraPage(customer: customer),
                       ),
                     );
-
                     break;
 
                   case Mode.noNational:
