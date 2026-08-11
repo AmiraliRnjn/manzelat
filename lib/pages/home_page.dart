@@ -92,7 +92,8 @@ class _HomePageState extends State<HomePage> {
         break;
     }
   }
-
+int currentIndex = 0;
+bool hasSelectedItem = false;
   @override
   Widget build(BuildContext context) {
     const primaryBlue = Color(0xFF1565C0);
@@ -203,11 +204,18 @@ class _HomePageState extends State<HomePage> {
       // صدور این تاریخ ، صدور ، شارژ ، شارژ این تاریخ
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: primaryBlue,
+        currentIndex: currentIndex,
+        selectedItemColor: hasSelectedItem ? primaryBlue : Colors.grey,
         unselectedItemColor: Colors.grey,
         selectedLabelStyle: TextStyle(fontFamily: "Traffic" ),
         unselectedLabelStyle: TextStyle(fontFamily: "Traffic"),
-        onTap: _handleBottomNavTap,
+        onTap:(value) {
+          setState(() {
+            currentIndex = value;
+            hasSelectedItem = true;
+          });
+          _handleBottomNavTap(value);
+        },
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.folder ,size: 15,),
