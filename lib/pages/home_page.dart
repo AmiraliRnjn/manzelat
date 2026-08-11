@@ -104,7 +104,7 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: primaryBlue,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
-        title: const Text('MiCard' ,style: TextStyle(color: Colors.white),),
+        title: const Text('متروا' ,style: TextStyle(color: Colors.white , fontFamily: 'Traffic',fontWeight: FontWeight.bold),),
         actions: [
           IconButton(
             icon: const Icon(Icons.calendar_month),
@@ -131,7 +131,7 @@ class _HomePageState extends State<HomePage> {
             ),
             ListTile(
               leading: const Icon(Icons.settings, color: primaryBlue),
-              title: const Text('مدیریت',style: TextStyle(fontFamily: 'Traffic'),),
+              title: const Text('تنظیمات',style: TextStyle(fontFamily: 'Traffic'),),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
@@ -205,22 +205,24 @@ class _HomePageState extends State<HomePage> {
         type: BottomNavigationBarType.fixed,
         selectedItemColor: primaryBlue,
         unselectedItemColor: Colors.grey,
+        selectedLabelStyle: TextStyle(fontFamily: "Traffic" ),
+        unselectedLabelStyle: TextStyle(fontFamily: "Traffic"),
         onTap: _handleBottomNavTap,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.folder),
+            icon: Icon(Icons.folder ,size: 15,),
             label: 'شارژ این تاریخ',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.flash_on),
+            icon: Icon(Icons.flash_on,size: 30,),
             label: 'شارژ',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.badge),
+            icon: Icon(Icons.badge ,size: 30,),
             label: 'صدور',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.folder),
+            icon: Icon(Icons.folder ,size: 15,),
             label: 'صدور این تاریخ',
           ),
         ],

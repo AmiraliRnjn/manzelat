@@ -133,7 +133,7 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
     if (path.isEmpty) {
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('لطفاً یک مسیر معتبر وارد کنید.')),
+        const SnackBar(content: Text('لطفاً یک مسیر معتبر وارد کنید.', style: TextStyle(fontFamily: "Traffic"))),
       );
 
       return;
@@ -145,7 +145,8 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'ابتدا باید مجوز دسترسی به حافظه را فعال کنید.',
+            'ابتدا باید مجوز دسترسی به حافظه را فعال کنید.'
+            , style: TextStyle(fontFamily: "Traffic")
           ),
         ),
       );
@@ -159,7 +160,7 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('مسیر ذخیره‌سازی با موفقیت ذخیره شد.')),
+      const SnackBar(content: Text('مسیر ذخیره‌سازی با موفقیت ذخیره شد.', style: TextStyle(fontFamily: "Traffic"))),
     );
 
   }
@@ -170,7 +171,7 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
     return Scaffold(
 
       appBar: AppBar(
-        title: const Text('مدیریت / تنظیمات'),
+        title: const Text('تنظیمات' , style: TextStyle(fontFamily: "Traffic"),),
       ),
 
       body: isLoading
@@ -188,6 +189,7 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
+                      fontFamily: "Traffic"
                     ),
                   ),
 
@@ -207,6 +209,7 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
                         hasPermission
                             ? 'مجوز فعال است.'
                             : 'مجوز هنوز فعال نشده است.',
+                             style: TextStyle(fontFamily: "Traffic")
                       ),
 
                     ],
@@ -218,7 +221,7 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
                     ElevatedButton.icon(
                       onPressed: _requestPermission,
                       icon: const Icon(Icons.lock_open),
-                      label: const Text('فعال‌سازی مجوز دسترسی به حافظه'),
+                      label: const Text('فعال‌سازی مجوز دسترسی به حافظه', style: TextStyle(fontFamily: "Traffic")),
                     ),
 
                   if (!hasPermission) const SizedBox(height: 8),
@@ -229,7 +232,7 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
                         PermissionService.openAllFilesAccessSettingsList();
                       },
                       child: const Text(
-                        'اگر دکمه‌ی بالا جواب نداد، از اینجا لیست عمومی را باز کنید',
+                        'اگر دکمه‌ی بالا جواب نداد، از اینجا لیست عمومی را باز کنید', style: TextStyle(fontFamily: "Traffic")
                       ),
                     ),
 
@@ -240,6 +243,7 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
+                      fontFamily: "Traffic"
                     ),
                   ),
 
@@ -250,6 +254,7 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
                     style: TextStyle(
                       fontSize: 13,
                       color: Colors.grey,
+                      fontFamily: "Traffic"
                     ),
                   ),
 
@@ -258,12 +263,13 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
                   ElevatedButton.icon(
                     onPressed: _pickFolder,
                     icon: const Icon(Icons.folder_open),
-                    label: const Text('انتخاب پوشه مستقل و دائمی'),
+                    label: const Text('انتخاب پوشه مستقل و دائمی', style: TextStyle(fontFamily: "Traffic")),
                   ),
 
                   const SizedBox(height: 12),
 
                   TextField(
+                    style: TextStyle(fontFamily: "Traffic"),
                     controller: pathController,
                     decoration: const InputDecoration(
                       labelText: 'مسیر ذخیره‌سازی',
@@ -277,7 +283,7 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
                   ElevatedButton.icon(
                     onPressed: _saveStoragePath,
                     icon: const Icon(Icons.save),
-                    label: const Text('ذخیره مسیر'),
+                    label: const Text('ذخیره مسیر', style: TextStyle(fontFamily: "Traffic")),
                   ),
 
                   const Divider(height: 40),
@@ -287,6 +293,7 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
+                      fontFamily: "Traffic"
                     ),
                   ),
 
@@ -298,6 +305,7 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
                         : 'هنوز تاریخی انتخاب نشده است.',
                     style: const TextStyle(
                       fontSize: 15,
+                      fontFamily: "Traffic"
                     ),
                   ),
 
@@ -306,7 +314,7 @@ class _SettingsPageState extends State<SettingsPage> with WidgetsBindingObserver
                   ElevatedButton.icon(
                     onPressed: _pickWorkDate,
                     icon: const Icon(Icons.calendar_month),
-                    label: const Text('تغییر تاریخ کاری'),
+                    label: const Text('تغییر تاریخ کاری', style: TextStyle(fontFamily: "Traffic")),
                   ),
 
                 ],
