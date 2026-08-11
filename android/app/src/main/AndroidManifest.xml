@@ -7,6 +7,12 @@
 <!-- دسترسی‌های لازم برای دوربینه -->
     <uses-permission android:name="android.permission.CAMERA"/>
 
+    <uses-permission android:name="android.permission.NFC"/>
+
+    <uses-feature
+    android:name="android.hardware.nfc"
+    android:required="true" />
+
     <!-- دسترسی‌های لازم برای خواندن و نوشتن حافظه -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>

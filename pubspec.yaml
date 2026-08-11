@@ -50,6 +50,8 @@ dependencies:
   archive: ^4.0.9   # برای فشرده‌سازی پوشه به ZIP
   share_plus: ^10.0.0 # برای اشتراک‌گذاری فایل در بله
   open_filex: ^4.7.0
+  nfc_manager: ^4.2.1
+  nfc_manager_ndef: ^1.1.0
   
 
 

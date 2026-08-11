@@ -12,6 +12,7 @@ import 'dart:ui' as ui;
 import 'package:image/image.dart' as img;
 import 'package:archive/archive_io.dart';
 import 'package:share_plus/share_plus.dart';
+import '../services/native_nfc_service.dart';
 
 class CameraPage extends StatefulWidget {
   final CustomerData customer;
@@ -30,6 +31,9 @@ class _CameraPageState extends State<CameraPage> {
 
 bool isTakingPicture = false;
 
+  bool isReadingNfc = false;
+  String nfcStatus = 'NFC آماده نیست';
+
   final List<Map<String, dynamic>> savedCardsData = [];
   final Map<CardType, TextEditingController> textControllers = {};
 
@@ -43,6 +47,65 @@ bool isTakingPicture = false;
     textControllers[CardType.ticket] = TextEditingController();
     textControllers[CardType.national] = TextEditingController();
     textControllers[CardType.manzelat] = TextEditingController();
+
+    NativeNfcService.setTagListener(_handleNativeNfcTag);
+  }
+
+  Future<void> _handleNativeNfcTag(dynamic arguments) async {
+    if (!mounted) return;
+
+    try {
+      final map = Map<dynamic, dynamic>.from(arguments as Map);
+
+      final uidHex = (map['uid'] ?? '').toString();
+      final ticketNumber = (map['ticketNumber'] ?? '').toString();
+
+      if (uidHex.isEmpty || ticketNumber.isEmpty) {
+        throw Exception('UID یا شماره بلیت از Android دریافت نشد.');
+      }
+
+      textControllers[CardType.ticket]?.text = ticketNumber;
+
+      setState(() {
+        isReadingNfc = false;
+        nfcStatus =
+            'کارت شناسایی شد\n'
+            'شماره بلیت: $ticketNumber';
+      });
+
+      await showDialog<void>(
+        context: context,
+        builder: (context) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            title: const Text('کارت با موفقیت خوانده شد'),
+            content: Text(
+              'شماره بلیت:\n$ticketNumber',
+              textAlign: TextAlign.right,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('تأیید'),
+              ),
+            ],
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        isReadingNfc = false;
+        nfcStatus = 'خطا در دریافت اطلاعات کارت:\n$e';
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('خطا در دریافت UID کارت: $e'),
+        ),
+      );
+    }
   }
 
   Future<void> initializeCamera() async {
@@ -133,6 +196,85 @@ Future<void> takePicture() async {
       return Uint8List.fromList(img.encodeJpg(decodedImage, quality: 85));
     } catch (e) {
       return null;
+    }
+  }
+
+  // ================================================================
+  // NFC reader - Android / MIFARE Classic
+  // ================================================================
+
+  String _uidToHex(Uint8List uid) {
+    return uid
+        .map((b) => b.toRadixString(16).padLeft(2, '0').toUpperCase())
+        .join(':');
+  }
+
+  String _ticketNumberFromUid(Uint8List uid) {
+    if (uid.length != 4) {
+      throw Exception(
+        'UID این کارت باید 4 بایت باشد؛ UID دریافت‌شده ${uid.length} بایت است.',
+      );
+    }
+
+    // 49:6F:84:71
+    // -> 0x71846F49 (little-endian)
+    // -> 1904504649
+    final value =
+        (uid[0]) |
+        (uid[1] << 8) |
+        (uid[2] << 16) |
+        (uid[3] << 24);
+
+    return (value & 0xFFFFFFFF).toString();
+  }
+
+  Future<void> _startNfcReader() async {
+    if (isReadingNfc) return;
+
+    try {
+      setState(() {
+        isReadingNfc = true;
+        nfcStatus = 'NFC فعال شد؛ کارت را پشت گوشی قرار دهید...';
+      });
+
+      await NativeNfcService.startReader();
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'کارت را پشت گوشی، نزدیک قسمت NFC، ثابت نگه دارید.',
+          ),
+          duration: Duration(seconds: 4),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        isReadingNfc = false;
+        nfcStatus = 'خطا در فعال‌سازی NFC:\n$e';
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('فعال‌سازی NFC ناموفق بود: $e'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _stopNfcReader() async {
+    try {
+      await NativeNfcService.stopReader();
+    } catch (_) {}
+
+    if (mounted) {
+      setState(() {
+        isReadingNfc = false;
+        nfcStatus = 'NFC متوقف شد';
+      });
     }
   }
 
@@ -569,11 +711,91 @@ Future<void> takePicture() async {
                     const SizedBox(height: 12),
                   ],
                   capturedImage == null
-                      ? ElevatedButton.icon(
-                          onPressed: isTakingPicture ? null : takePicture,
-                          icon: const Icon(Icons.camera_alt),
-                          label: const Text('گرفتن عکس'),
+
+                      ? Column(
+
+                          children: [
+
+                            SizedBox(
+
+                              width: double.infinity,
+
+                              child: ElevatedButton.icon(
+
+                                onPressed: isTakingPicture ? null : takePicture,
+
+                                icon: const Icon(Icons.camera_alt),
+
+                                label: const Text('گرفتن عکس'),
+
+                              ),
+
+                            ),
+
+                            if (currentCard == CardType.ticket) ...[
+
+                              const SizedBox(height: 10),
+
+                              SizedBox(
+
+                                width: double.infinity,
+
+                                child: OutlinedButton.icon(
+
+                                  onPressed:
+
+                                      isReadingNfc ? _stopNfcReader : _startNfcReader,
+
+                                  icon: Icon(
+
+                                    isReadingNfc ? Icons.stop_circle : Icons.nfc,
+
+                                  ),
+
+                                  label: Text(
+
+                                    isReadingNfc
+
+                                        ? 'توقف خواندن NFC'
+
+                                        : 'خواندن شماره بلیت با NFC',
+
+                                  ),
+
+                                ),
+
+                              ),
+
+                              if (nfcStatus.isNotEmpty) ...[
+
+                                const SizedBox(height: 8),
+
+                                Align(
+
+                                  alignment: Alignment.centerRight,
+
+                                  child: Text(
+
+                                    nfcStatus,
+
+                                    textDirection: TextDirection.rtl,
+
+                                    textAlign: TextAlign.right,
+
+                                    style: const TextStyle(fontSize: 12),
+
+                                  ),
+
+                                ),
+
+                              ],
+
+                            ],
+
+                          ],
+
                         )
+
                       : Row(
                           children: [
                             Expanded(
@@ -675,6 +897,8 @@ Future<void> takePicture() async {
 
   @override
   void dispose() {
+    NativeNfcService.removeTagListener();
+    NativeNfcService.stopReader().catchError((_) {});
     cameraController?.dispose();
     for (var c in textControllers.values) {
       c.dispose();
