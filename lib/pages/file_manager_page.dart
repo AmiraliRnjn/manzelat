@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:share_plus/share_plus.dart';
 import '../operation_type.dart';
+import '../reminder_status.dart';
 import '../services/file_manager_service.dart';
-import '../services/zip_share_status_service.dart';
+import '../services/customer_status_service.dart';
+import '../services/receipt_service.dart';
 
 class FileManagerPage extends StatefulWidget {
   final OperationType operationType;
@@ -18,12 +20,19 @@ class FileManagerPage extends StatefulWidget {
 class _FileManagerPageState extends State<FileManagerPage> {
   List<Directory> customerFolders = [];
   List<File> zipFiles = [];
-  Set<String> sharedZipPaths = {};
+  Set<String> sentKeys = {};
+  Set<String> receiptKeys = {};
   bool isLoading = true;
+
+  final TextEditingController _searchController = TextEditingController();
+  String _query = '';
 
   @override
   void initState() {
     super.initState();
+    _searchController.addListener(() {
+      setState(() => _query = _searchController.text.trim());
+    });
     _loadData();
   }
 
@@ -34,26 +43,58 @@ class _FileManagerPageState extends State<FileManagerPage> {
     final zips = await FileManagerService.getCustomerZipFiles(
       widget.operationType,
     );
-    final shared = await ZipShareStatusService.getSharedPaths();
+    final sent = await CustomerStatusService.getSentKeys();
+    final receipts = await CustomerStatusService.getReceiptKeys();
 
     if (!mounted) return;
 
     setState(() {
       customerFolders = folders;
       zipFiles = zips;
-      sharedZipPaths = shared;
+      sentKeys = sent;
+      receiptKeys = receipts;
       isLoading = false;
     });
   }
 
-  /// آیا حداقل یک ZIP هنوز اشتراک‌گذاری نشده — برای نقطه‌ی روی خود تب ZIP.
-  bool get _hasUnsharedZip =>
-      zipFiles.any((z) => !sharedZipPaths.contains(z.path));
+  ReminderStatus _statusFor(FileSystemEntity entity) {
+    return CustomerStatusService.statusFor(
+      entity.path,
+      sentKeys: sentKeys,
+      receiptKeys: receiptKeys,
+    );
+  }
+
+  List<Directory> get _filteredFolders {
+    if (_query.isEmpty) return customerFolders;
+    return customerFolders
+        .where((f) => FileManagerService.displayName(f).contains(_query))
+        .toList();
+  }
+
+  List<File> get _filteredZips {
+    if (_query.isEmpty) return zipFiles;
+    return zipFiles
+        .where((f) => FileManagerService.displayName(f).contains(_query))
+        .toList();
+  }
+
+  /// بدترین وضعیت داخل یک لیست، برای نقطه‌ی روی خود تب (قرمز > زرد > هیچ‌کدام).
+  Color? _tabDotColor(List<FileSystemEntity> items) {
+    bool anyRed = false;
+    bool anyYellow = false;
+    for (final item in items) {
+      final status = _statusFor(item);
+      if (status == ReminderStatus.notSent) anyRed = true;
+      if (status == ReminderStatus.awaitingReceipt) anyYellow = true;
+    }
+    if (anyRed) return Colors.red;
+    if (anyYellow) return Colors.amber;
+    return null;
+  }
 
   // ------------------------------- اکشن‌های پوشه -------------------------------
 
-  /// پوشه فقط داخل خود اپ باز می‌شود (لیست فایل‌ها) — نیازی به باز کردن
-  /// پوشه با اپ خارجی نیست، این فقط برای چک کردن سریع محتویات پوشه است.
   void _openFolder(Directory folder) {
     Navigator.push(
       context,
@@ -76,6 +117,8 @@ class _FileManagerPageState extends State<FileManagerPage> {
       final renamedFolder =
           await FileManagerService.rename(folder, input.trim()) as Directory;
       final newName = FileManagerService.displayName(renamedFolder);
+
+      await CustomerStatusService.transfer(folder.path, renamedFolder.path);
 
       // اگر ZIP هم‌نامی (که با نام قبلی پوشه ساخته شده بود) کنارش باشد،
       // آن را هم خودکار با نام جدید هم‌نام می‌کنیم تا با پوشه هماهنگ بماند.
@@ -123,10 +166,6 @@ class _FileManagerPageState extends State<FileManagerPage> {
     try {
       await FileManagerService.zipCustomerFolder(folder);
 
-      // ZIP تازه ساخته شده (یا بازنویسی شده) هنوز فرستاده نشده، پس اگر قبلاً
-      // علامت «اشتراک‌گذاری‌شده» داشت، پاکش می‌کنیم تا یادآور دوباره بیاد.
-      await ZipShareStatusService.clear(existingZip.path);
-
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -155,6 +194,7 @@ class _FileManagerPageState extends State<FileManagerPage> {
 
     try {
       await FileManagerService.delete(folder);
+      await CustomerStatusService.clearAll(folder.path);
 
       if (!mounted) return;
 
@@ -185,10 +225,17 @@ class _FileManagerPageState extends State<FileManagerPage> {
       files.map((f) => XFile(f.path)).toList(),
       subject: FileManagerService.displayName(folder),
     );
+
+    // فقط بعد از زدن روی «اشتراک‌گذاری» یادآور به حالت زرد (منتظر رسید) می‌رود.
+    await CustomerStatusService.markSent(folder.path);
+
+    if (!mounted) return;
+    setState(() {
+      sentKeys.add(CustomerStatusService.keyForPath(folder.path));
+    });
   }
 
   // -------------------------------- اکشن‌های ZIP --------------------------------
-  // طبق تصمیم، ZIP داخل خود اپ باز نمی‌شود؛ در صورت نیاز با یک اپ خارجی باز می‌شود.
 
   Future<void> _renameZip(File zip) async {
     final currentName = FileManagerService.displayName(zip);
@@ -205,9 +252,7 @@ class _FileManagerPageState extends State<FileManagerPage> {
       final renamedZip =
           await FileManagerService.rename(zip, input.trim()) as File;
 
-      // اگر این فایل قبلاً «اشتراک‌گذاری‌شده» علامت خورده بود، همان وضعیت
-      // را روی مسیر جدید هم منتقل می‌کنیم تا یادآور بی‌جهت برنگردد.
-      await ZipShareStatusService.transfer(zip.path, renamedZip.path);
+      await CustomerStatusService.transfer(zip.path, renamedZip.path);
 
       if (!mounted) return;
 
@@ -237,7 +282,8 @@ class _FileManagerPageState extends State<FileManagerPage> {
 
     try {
       await FileManagerService.delete(zip);
-      await ZipShareStatusService.clear(zip.path);
+      // توجه: وضعیت (فرستاده‌شده/رسید) پاک نمی‌شود، چون این وضعیت مال خودِ
+      // مشتری (پوشه) است؛ حذف ZIP به‌تنهایی نباید یادآور پوشه را ریست کند.
 
       if (!mounted) return;
 
@@ -260,12 +306,12 @@ class _FileManagerPageState extends State<FileManagerPage> {
       subject: FileManagerService.displayName(zip),
     );
 
-    // فقط بعد از زدن روی «اشتراک‌گذاری» یادآور کنار این فایل برداشته می‌شود.
-    await ZipShareStatusService.markAsShared(zip.path);
+    // فقط بعد از زدن روی «اشتراک‌گذاری» یادآور به حالت زرد (منتظر رسید) می‌رود.
+    await CustomerStatusService.markSent(zip.path);
 
     if (!mounted) return;
     setState(() {
-      sharedZipPaths.add(zip.path);
+      sentKeys.add(CustomerStatusService.keyForPath(zip.path));
     });
   }
 
@@ -340,6 +386,9 @@ class _FileManagerPageState extends State<FileManagerPage> {
         ? 'شارژ این تاریخ'
         : 'صدور این تاریخ';
 
+    final folderDot = _tabDotColor(customerFolders);
+    final zipDot = _tabDotColor(zipFiles);
+
     return DefaultTabController(
       length: 2,
       child: Scaffold(
@@ -347,22 +396,26 @@ class _FileManagerPageState extends State<FileManagerPage> {
           title: Text(title),
           bottom: TabBar(
             tabs: [
-              const Tab(text: 'فایل اصلی'),
+              Tab(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('فایل اصلی'),
+                    if (folderDot != null) ...[
+                      const SizedBox(width: 6),
+                      _dot(folderDot, size: 8),
+                    ],
+                  ],
+                ),
+              ),
               Tab(
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Text('ZIP'),
-                    if (_hasUnsharedZip) ...[
+                    if (zipDot != null) ...[
                       const SizedBox(width: 6),
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
+                      _dot(zipDot, size: 8),
                     ],
                   ],
                 ),
@@ -372,31 +425,83 @@ class _FileManagerPageState extends State<FileManagerPage> {
         ),
         body: isLoading
             ? const Center(child: CircularProgressIndicator())
-            : TabBarView(
+            : Column(
                 children: [
-                  _buildCustomerFoldersList(),
-                  _buildZipFilesList(),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                    child: TextField(
+                      controller: _searchController,
+                      textDirection: TextDirection.rtl,
+                      decoration: const InputDecoration(
+                        hintText: 'جستجوی نام مشتری...',
+                        prefixIcon: Icon(Icons.search),
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        _buildCustomerFoldersList(),
+                        _buildZipFilesList(),
+                      ],
+                    ),
+                  ),
                 ],
               ),
       ),
     );
   }
 
+  Widget _dot(Color color, {double size = 10}) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 1.5),
+      ),
+    );
+  }
+
+  Widget _leadingWithDot(IconData icon, Color iconColor, ReminderStatus status) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Icon(icon, color: iconColor),
+        Positioned(
+          right: -2,
+          top: -2,
+          child: _dot(status.dotColor),
+        ),
+      ],
+    );
+  }
+
   Widget _buildCustomerFoldersList() {
+    final filtered = _filteredFolders;
+
     if (customerFolders.isEmpty) {
       return const Center(child: Text('هنوز مشتری‌ای برای این تاریخ ثبت نشده'));
+    }
+
+    if (filtered.isEmpty) {
+      return const Center(child: Text('مشتری‌ای پیدا نشد.'));
     }
 
     return RefreshIndicator(
       onRefresh: _loadData,
       child: ListView.builder(
-        itemCount: customerFolders.length,
+        itemCount: filtered.length,
         itemBuilder: (context, index) {
-          final folder = customerFolders[index];
+          final folder = filtered[index];
           final fileCount = folder.listSync().whereType<File>().length;
+          final status = _statusFor(folder);
 
           return ListTile(
-            leading: const Icon(Icons.folder, color: Colors.amber),
+            leading: _leadingWithDot(Icons.folder, Colors.amber, status),
             title: Text(FileManagerService.displayName(folder)),
             subtitle: Text('$fileCount فایل'),
             onTap: () => _openFolder(folder),
@@ -439,39 +544,26 @@ class _FileManagerPageState extends State<FileManagerPage> {
   }
 
   Widget _buildZipFilesList() {
+    final filtered = _filteredZips;
+
     if (zipFiles.isEmpty) {
       return const Center(child: Text('هنوز فایل ZIP‌ای برای این تاریخ ساخته نشده'));
+    }
+
+    if (filtered.isEmpty) {
+      return const Center(child: Text('مشتری‌ای پیدا نشد.'));
     }
 
     return RefreshIndicator(
       onRefresh: _loadData,
       child: ListView.builder(
-        itemCount: zipFiles.length,
+        itemCount: filtered.length,
         itemBuilder: (context, index) {
-          final zip = zipFiles[index];
-          final isUnshared = !sharedZipPaths.contains(zip.path);
+          final zip = filtered[index];
+          final status = _statusFor(zip);
 
           return ListTile(
-            leading: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                const Icon(Icons.folder_zip, color: Colors.deepOrange),
-                if (isUnshared)
-                  Positioned(
-                    right: -2,
-                    top: -2,
-                    child: Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 1.5),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+            leading: _leadingWithDot(Icons.folder_zip, Colors.deepOrange, status),
             title: Text(FileManagerService.displayName(zip)),
             trailing: PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert),
@@ -504,9 +596,7 @@ class _FileManagerPageState extends State<FileManagerPage> {
   }
 }
 
-/// صفحه‌ی ساده‌ی داخل‌اپی برای مرور فایل‌های یک پوشه‌ی مشتری —
-/// با لمس هر فایل (مثلاً عکس)، همان فایل با یک اپ خارجی مناسب (گالری،
-/// نمایشگر عکس و ...) باز می‌شود؛ خود اپ چیزی را رندر نمی‌کند.
+/// صفحه‌ی ساده‌ی داخل‌اپی برای مرور فایل‌های یک پوشه‌ی مشتری.
 class _FolderContentsPage extends StatelessWidget {
   final Directory folder;
 
@@ -517,6 +607,11 @@ class _FolderContentsPage extends StatelessWidget {
   bool _isImage(File file) {
     final path = file.path.toLowerCase();
     return _imageExtensions.any((ext) => path.endsWith(ext));
+  }
+
+  bool _isReceipt(File file) {
+    final name = file.path.split(Platform.pathSeparator).last;
+    return name.startsWith(ReceiptService.receiptPrefix);
   }
 
   Future<void> _openFile(BuildContext context, File file) async {
@@ -549,11 +644,14 @@ class _FolderContentsPage extends StatelessWidget {
               itemBuilder: (context, index) {
                 final file = files[index];
                 final sizeKb = (file.lengthSync() / 1024).toStringAsFixed(1);
+                final isReceipt = _isReceipt(file);
 
                 return ListTile(
                   leading: Icon(
-                    _isImage(file) ? Icons.image : Icons.insert_drive_file,
-                    color: Colors.blueGrey,
+                    isReceipt
+                        ? Icons.receipt_long
+                        : (_isImage(file) ? Icons.image : Icons.insert_drive_file),
+                    color: isReceipt ? Colors.green : Colors.blueGrey,
                   ),
                   title: Text(FileManagerService.displayName(file)),
                   subtitle: Text('$sizeKb KB'),
