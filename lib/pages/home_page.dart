@@ -125,7 +125,7 @@ class _HomePageState extends State<HomePage> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
-            'سلام 👋',
+            'متروا',
             textDirection: TextDirection.rtl,
             style: TextStyle(
               color: Colors.white,
@@ -136,7 +136,7 @@ class _HomePageState extends State<HomePage> {
           ),
           SizedBox(height: 8),
           Text(
-            'در خدمت هستم',
+            ' 👋 سلام در خدمت هستم',
             textDirection: TextDirection.rtl,
             style: TextStyle(
               color: Colors.white,
