@@ -404,6 +404,14 @@ Future<void> takePicture() async {
     );
   }
 
+  bool get isShohadaCustomer {
+    return widget.customer.cards.length == 2 &&
+        widget.customer.cards.contains(CardType.national) &&
+        widget.customer.cards.contains(CardType.personalPhoto) &&
+        !widget.customer.cards.contains(CardType.ticket) &&
+        !widget.customer.cards.contains(CardType.manzelat);
+  }
+
   Future<void> showFinalSaveDialog() async {
     return showDialog<void>(
       context: context,
@@ -427,19 +435,21 @@ Future<void> takePicture() async {
                     ),
                     const Divider(height: 20),
 
-                    // فیلد اول: سریال پشت کارت بلیط
-                    Directionality(
-                      textDirection: TextDirection.rtl,
-                      child: TextField(
-                        controller: textControllers[CardType.ticket],
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'متن اول: سریال پشت کارت بلیط',
-                          border: OutlineInputBorder(),
+                    // برای شهدا شماره بلیت لازم نیست.
+                    if (!isShohadaCustomer) ...[
+                      Directionality(
+                        textDirection: TextDirection.rtl,
+                        child: TextField(
+                          controller: textControllers[CardType.ticket],
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'سریال پشت کارت بلیط را وارد کنید',
+                            border: OutlineInputBorder(),
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
+                      const SizedBox(height: 12),
+                    ],
 
                     // فیلد دوم: کد ملی
                     Directionality(
@@ -448,7 +458,7 @@ Future<void> takePicture() async {
                         controller: textControllers[CardType.national],
                         keyboardType: TextInputType.number,
                         decoration: const InputDecoration(
-                          labelText: 'متن دوم: کد ملی',
+                          labelText: 'کد ملی را وارد کنید',
                           border: OutlineInputBorder(),
                         ),
                       ),
@@ -462,7 +472,7 @@ Future<void> takePicture() async {
                         controller: textControllers[CardType.manzelat],
                         keyboardType: TextInputType.number,
                         decoration: const InputDecoration(
-                          labelText: 'متن سوم: شماره تلفن همراه',
+                          labelText: 'شماره تلفن همراه را وارد کنید',
                           border: OutlineInputBorder(),
                         ),
                       ),
@@ -488,7 +498,7 @@ Future<void> takePicture() async {
                         .trim();
 
                     // ۲. بررسی خالی نبودن فیلدها بر اساس دکمه فشرده شده (کنترل خطا)
-                    if (ticketText.isEmpty ||
+                    if ((!isShohadaCustomer && ticketText.isEmpty) ||
                         nationalText.isEmpty ||
                         manzelatText.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(

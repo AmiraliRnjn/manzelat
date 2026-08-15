@@ -4,4 +4,5 @@ enum Mode {
   noManzelat,
   all,
   export,
+  shohada
 }

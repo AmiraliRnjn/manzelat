@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:manzelat/operation_type.dart';
+import 'package:manzelat/pages/charge_category_page.dart';
 import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import 'settings_page.dart';
 import 'customer_info_page.dart';
@@ -58,7 +59,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _openCharge() {
-    Navigator.pushNamed(context, '/first');
+    Navigator.push(context, MaterialPageRoute(builder: (context) => ChargeCategoryPage(),));
   }
 
   void _openIssue() {

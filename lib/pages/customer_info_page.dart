@@ -103,6 +103,21 @@ class _CustomerInfoPageState extends State<CustomerInfoPage> {
 
                     break;
 
+                  case Mode.shohada:
+                    customer.cards = [
+                      CardType.national,
+                      CardType.personalPhoto,
+                    ];
+
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CameraPage(customer: customer),
+                      ),
+                    );
+
+                    break;
+
                   case Mode.all:
                     customer.cards = [
                       CardType.ticket,
