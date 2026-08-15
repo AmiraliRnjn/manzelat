@@ -15,7 +15,12 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  static const primaryBlue = Color(0xFF1565C0);
+  static const purple = Color(0xFF7E57C2);
+  static const green = Color(0xFF35B96B);
+
   Jalali? workDate;
+  int currentIndex = 0;
 
   @override
   void initState() {
@@ -52,186 +57,446 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  // چهار حالت نوبار پایین (به‌ترتیب همان چیزی که در آرایه‌ی items چیده می‌شود).
-  void _handleBottomNavTap(int index) {
-    switch (index) {
-      case 0: // شارژ این تاریخ
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) =>
-                const FileManagerPage(operationType: OperationType.charge),
-          ),
-        );
-        break;
+  void _openCharge() {
+    Navigator.pushNamed(context, '/first');
+  }
 
-      case 1: // شارژ
-        Navigator.pushNamed(context, '/first');
-        break;
+  void _openIssue() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const CustomerInfoPage(
+          mode: Mode.export,
+          operationType: OperationType.issue,
+        ),
+      ),
+    );
+  }
 
-      case 2: // صدور
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const CustomerInfoPage(
-              mode: Mode.export,
-              operationType: OperationType.issue,
+  void _openChargeFolders() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            const FileManagerPage(operationType: OperationType.charge),
+      ),
+    );
+  }
+
+  void _openIssueFolders() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            const FileManagerPage(operationType: OperationType.issue),
+      ),
+    );
+  }
+
+  void _openSettings() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const SettingsPage(),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(24, 32, 24, 70),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+          colors: [
+            Color(0xFF0D47B5),
+            Color(0xFF1976D2),
+          ],
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(42),
+          bottomRight: Radius.circular(42),
+        ),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            'سلام 👋',
+            textDirection: TextDirection.rtl,
+            style: TextStyle(
+              color: Colors.white,
+              fontFamily: 'Traffic',
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
             ),
           ),
-        );
-        break;
-
-      case 3: // صدور این تاریخ
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) =>
-                const FileManagerPage(operationType: OperationType.issue),
-          ),
-        );
-        break;
-    }
-  }
-int currentIndex = 0;
-bool hasSelectedItem = false;
-  @override
-  Widget build(BuildContext context) {
-    const primaryBlue = Color(0xFF1565C0);
-
-    return Scaffold(
-      backgroundColor: Colors.white,
-
-      appBar: AppBar(
-        backgroundColor: primaryBlue,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
-        title: const Text('متروا' ,style: TextStyle(color: Colors.white , fontFamily: 'Traffic',fontWeight: FontWeight.bold),),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.calendar_month),
-            tooltip: 'انتخاب تاریخ کاری',
-            onPressed: _pickWorkDate,
+          SizedBox(height: 8),
+          Text(
+            'در خدمت هستم',
+            textDirection: TextDirection.rtl,
+            style: TextStyle(
+              color: Colors.white,
+              fontFamily: 'Traffic',
+              fontSize: 21,
+            ),
           ),
         ],
       ),
+    );
+  }
 
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            const DrawerHeader(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF1565C0), Color(0xFF42A5F5)],
-                ),
+  Widget _buildActiveDateCard() {
+    return Transform.translate(
+      offset: const Offset(0, -38),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Material(
+          color: Colors.white,
+          elevation: 5,
+          shadowColor: Colors.black12,
+          borderRadius: BorderRadius.circular(24),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(24),
+            onTap: _pickWorkDate,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 18,
+                vertical: 16,
               ),
-              child: Text(
-                'منو',
-                style: TextStyle(color: Colors.white, fontSize: 22,fontFamily: 'Traffic'),
+              child: Row(
+                textDirection: TextDirection.rtl,
+                children: [
+                  Container(
+                    width: 58,
+                    height: 58,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF2F6FF),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: const Icon(
+                      Icons.calendar_month_rounded,
+                      color: primaryBlue,
+                      size: 32,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      textDirection: TextDirection.rtl,
+                      children: [
+                        const Text(
+                          'تاریخ فعال',
+                          textDirection: TextDirection.rtl,
+                          style: TextStyle(
+                            color: Color(0xFF374151),
+                            fontFamily: 'Traffic',
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          workDate != null
+                              ? workDate!.formatFullDate()
+                              : 'تاریخی انتخاب نشده است',
+                          textDirection: TextDirection.rtl,
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontFamily: 'Traffic',
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.edit_calendar_outlined,
+                    color: primaryBlue,
+                    size: 24,
+                  ),
+                ],
               ),
             ),
-            ListTile(
-              leading: const Icon(Icons.settings, color: primaryBlue),
-              title: const Text('تنظیمات',style: TextStyle(fontFamily: 'Traffic'),),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SettingsPage()),
-                );
-              },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMainAction({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: onTap,
+          child: Ink(
+            height: 150,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+                colors: [
+                  color.withOpacity(0.88),
+                  color,
+                ],
+              ),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withOpacity(0.18),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  color: Colors.white,
+                  size: 46,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  title,
+                  textDirection: TextDirection.rtl,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontFamily: 'Traffic',
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  subtitle,
+                  textDirection: TextDirection.rtl,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontFamily: 'Traffic',
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFolderTile({
+    required String title,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.white,
+      elevation: 1,
+      shadowColor: Colors.black12,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 15,
+          ),
+          child: Row(
+            textDirection: TextDirection.rtl,
+            children: [
+              const Icon(
+                Icons.chevron_left_rounded,
+                color: Color(0xFF6B7280),
+                size: 30,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      title,
+                      textDirection: TextDirection.rtl,
+                      style: const TextStyle(
+                        color: Color(0xFF172554),
+                        fontFamily: 'Traffic',
+                        fontSize: 19,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    const Text(
+                      'مشاهده فایل‌های ذخیره شده',
+                      textDirection: TextDirection.rtl,
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontFamily: 'Traffic',
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 14),
+              Container(
+                width: 58,
+                height: 58,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(17),
+                ),
+                child: Icon(
+                  icon,
+                  color: color,
+                  size: 31,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFFAFBFF),
+
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            _buildHeader(),
+
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: 24),
+                child: Column(
+                  children: [
+                    _buildActiveDateCard(),
+
+                    Transform.translate(
+                      offset: const Offset(0, -18),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Row(
+                              textDirection: TextDirection.rtl,
+                              children: [
+                                _buildMainAction(
+                                  title: 'شارژ',
+                                  subtitle: 'شارژ کارت‌ها',
+                                  icon: Icons.bolt_rounded,
+                                  color: purple,
+                                  onTap: _openCharge,
+                                ),
+                                const SizedBox(width: 14),
+                                _buildMainAction(
+                                  title: 'صدور',
+                                  subtitle: 'صدور کارت‌ها',
+                                  icon: Icons.description_rounded,
+                                  color: green,
+                                  onTap: _openIssue,
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 28),
+
+                            const Text(
+                              'پوشه‌ها',
+                              textDirection: TextDirection.rtl,
+                              style: TextStyle(
+                                color: Color(0xFF172554),
+                                fontFamily: 'Traffic',
+                                fontSize: 23,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            _buildFolderTile(
+                              title: 'پوشه‌های شارژ',
+                              icon: Icons.folder_rounded,
+                              color: purple,
+                              onTap: _openChargeFolders,
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            _buildFolderTile(
+                              title: 'پوشه‌های صدور',
+                              icon: Icons.folder_rounded,
+                              color: green,
+                              onTap: _openIssueFolders,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
       ),
 
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // کارت تاریخ
-              if (workDate != null)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 12,
-                        offset: Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      const Text(
-                        'تاریخ کاری فعال',
-                        style: TextStyle(color: Colors.grey, fontSize: 14,fontFamily: 'Traffic'),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        workDate!.formatFullDate(),
-                        style: const TextStyle(
-                          color: primaryBlue,
-                          fontFamily: 'Traffic',
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              else
-                const Text(
-                  'برای شروع، تاریخ کاری را از گوشه‌ی بالا انتخاب کنید.',
-                  style: TextStyle(color: Colors.grey, fontFamily: 'Traffic'),
-                  textAlign: TextAlign.center,
-                ),
-            ],
-          ),
-        ),
-      ),
-
-      // نوار پایین: شارژ/صدور (که قبلاً وسط صفحه بودند) کنار «این تاریخ»‌ها آمدند.
-      // ترتیب آرایه‌ی items عمداً همین‌طور چیده شده تا با راست‌به‌چپ بودن صفحه،
-      // نمایش نهایی از چپ به راست این شود:
-      // صدور این تاریخ ، صدور ، شارژ ، شارژ این تاریخ
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         currentIndex: currentIndex,
-        selectedItemColor: hasSelectedItem ? primaryBlue : Colors.grey,
-        unselectedItemColor: Colors.grey,
-        selectedLabelStyle: TextStyle(fontFamily: "Traffic" ),
-        unselectedLabelStyle: TextStyle(fontFamily: "Traffic"),
-        onTap:(value) {
-          setState(() {
-            currentIndex = value;
-            hasSelectedItem = true;
-          });
-          _handleBottomNavTap(value);
+        backgroundColor: Colors.white,
+        elevation: 10,
+        selectedItemColor: primaryBlue,
+        unselectedItemColor: const Color(0xFF6B7280),
+        selectedLabelStyle: const TextStyle(
+          fontFamily: 'Traffic',
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+        ),
+        unselectedLabelStyle: const TextStyle(
+          fontFamily: 'Traffic',
+          fontSize: 14,
+        ),
+        onTap: (index) {
+          if (index == 0) {
+            setState(() {
+              currentIndex = 0;
+            });
+          } else {
+            setState(() {
+              currentIndex = 1;
+            });
+            _openSettings();
+          }
         },
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.folder ,size: 15,),
-            label: 'شارژ این تاریخ',
+            icon: Icon(Icons.home_rounded),
+            label: 'خانه',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.flash_on,size: 30,),
-            label: 'شارژ',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.badge ,size: 30,),
-            label: 'صدور',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.folder ,size: 15,),
-            label: 'صدور این تاریخ',
+            icon: Icon(Icons.settings_rounded),
+            label: 'تنظیمات',
           ),
         ],
       ),
