@@ -1,5 +1,5 @@
-import '../card_type.dart';
-import '../operation_type.dart';
+import '../app_enum.dart';
+
 
 class CustomerData {
   String fullName;

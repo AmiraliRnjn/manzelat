@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'camera_page.dart';
-import '../card_type.dart';
+import '../app_enum.dart';
 import '../models/customer_data.dart';
 
 class OptionalCardsPage extends StatefulWidget {

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:manzelat/mode.dart';
-import 'package:manzelat/operation_type.dart';
+import 'package:manzelat/app_enum.dart';
 import 'package:manzelat/pages/charge_page.dart';
 import 'package:manzelat/pages/customer_info_page.dart';
 
@@ -15,6 +14,8 @@ class ChargeCategoryPage extends StatelessWidget {
       Navigator.push(context, MaterialPageRoute(builder: (context) => ChargePage(),));
     }else if (category=='شهدا'){
       Navigator.push(context, MaterialPageRoute(builder: (context) => CustomerInfoPage(mode:Mode.shohada , operationType: OperationType.charge),));
+    }else if (category=='دانشجویی و دانش‌آموزی'){
+      Navigator.push(context, MaterialPageRoute(builder: (context) => CustomerInfoPage(mode:Mode.daneshjo , operationType: OperationType.charge),));
     }
   }
 

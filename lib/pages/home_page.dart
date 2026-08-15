@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:manzelat/operation_type.dart';
 import 'package:manzelat/pages/charge_category_page.dart';
 import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import 'settings_page.dart';
 import 'customer_info_page.dart';
 import 'file_manager_page.dart';
 import '../services/work_date_service.dart';
-import '../mode.dart';
+import '../app_enum.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -17,8 +16,8 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   static const primaryBlue = Color(0xFF1565C0);
-  static const purple = Color(0xFF7E57C2);
-  static const green = Color(0xFF35B96B);
+  static const purple = Color.fromARGB(255, 128, 68, 232);
+  static const green = Color.fromARGB(255, 59, 211, 122);
 
   Jalali? workDate;
   int currentIndex = 0;
@@ -320,15 +319,23 @@ class _HomePageState extends State<HomePage> {
           child: Row(
             textDirection: TextDirection.rtl,
             children: [
-              const Icon(
-                Icons.chevron_left_rounded,
-                color: Color(0xFF6B7280),
-                size: 30,
+              Container(
+                width: 58,
+                height: 58,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(17),
+                ),
+                child: Icon(
+                  icon,
+                  color: color,
+                  size: 31,
+                ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       title,
@@ -354,18 +361,10 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               const SizedBox(width: 14),
-              Container(
-                width: 58,
-                height: 58,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.10),
-                  borderRadius: BorderRadius.circular(17),
-                ),
-                child: Icon(
-                  icon,
-                  color: color,
-                  size: 31,
-                ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: Color(0xFF6B7280),
+                size: 30,
               ),
             ],
           ),
@@ -397,7 +396,7 @@ class _HomePageState extends State<HomePage> {
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
                               textDirection: TextDirection.rtl,
@@ -499,6 +498,7 @@ class _HomePageState extends State<HomePage> {
             icon: Icon(Icons.settings_rounded),
             label: 'تنظیمات',
           ),
+          
         ],
       ),
     );

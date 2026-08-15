@@ -513,7 +513,7 @@ class _SettingsPageState extends State<SettingsPage>
         bottomNavigationBar: SafeArea(
           top: false,
           child: Container(
-            height: 86,
+            height: 58,
             decoration: const BoxDecoration(
               color: Colors.white,
               border: Border(
@@ -555,6 +555,8 @@ class _SettingsPageState extends State<SettingsPage>
       ),
     );
   }
+
+  
 
   @override
   void dispose() {
@@ -739,9 +741,9 @@ class _BottomNavItem extends StatelessWidget {
           Icon(
             icon,
             color: color,
-            size: 31,
+            size: 24,
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 1),
           Text(
             label,
             style: TextStyle(

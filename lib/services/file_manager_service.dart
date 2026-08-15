@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:archive/archive_io.dart';
-import '../operation_type.dart';
+import '../app_enum.dart';
 import 'storage_settings_service.dart';
 import 'work_date_service.dart';
 

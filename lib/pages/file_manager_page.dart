@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:share_plus/share_plus.dart';
-import '../operation_type.dart';
+import '../app_enum.dart';
 import '../reminder_status.dart';
 import '../services/file_manager_service.dart';
 import '../services/customer_status_service.dart';

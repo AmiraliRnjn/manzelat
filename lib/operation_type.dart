@@ -1,4 +1,0 @@
-enum OperationType {
-  charge,
-  issue,
-}

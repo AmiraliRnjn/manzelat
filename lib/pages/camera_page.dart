@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import '../services/storage_service.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import '../card_type.dart';
+import '../app_enum.dart';
 import '../models/customer_data.dart';
 import 'package:crop_image/crop_image.dart';
 import 'dart:typed_data';
@@ -388,6 +388,8 @@ bool isTakingPicture = false;
         return 'کارت منزلت';
       case CardType.personalPhoto:
         return 'عکس پرسنلی';
+      case CardType.studentcard:
+        return 'عکس کارت دانشجویی یا گواهی اشتغال';
     }
   }
 
@@ -395,7 +397,7 @@ bool isTakingPicture = false;
     switch (cardType) {
       case CardType.national:
         return 'کد ملی';
-      case CardType.manzelat:
+      case CardType.manzelat || CardType.studentcard:
         return 'شماره همراه';
       case CardType.ticket:
         return 'سریال پشت کارت بلیط';

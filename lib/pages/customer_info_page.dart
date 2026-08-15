@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'camera_page.dart';
-import '../card_type.dart';
-import '../mode.dart';
-import '../operation_type.dart';
+import '../app_enum.dart';
 import '../models/customer_data.dart';
 
 class CustomerInfoPage extends StatefulWidget {
@@ -75,6 +73,15 @@ class _CustomerInfoPageState extends State<CustomerInfoPage> {
       case Mode.shohada:
         customer.cards = [
           CardType.national,
+          CardType.personalPhoto,
+        ];
+        break;
+
+        case Mode.daneshjo:
+        customer.cards = [
+          CardType.ticket,
+          CardType.national,
+          CardType.studentcard,
           CardType.personalPhoto,
         ];
         break;

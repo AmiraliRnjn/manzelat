@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import '../operation_type.dart';
+import '../app_enum.dart';
 import '../services/file_manager_service.dart';
 import '../services/receipt_service.dart';
 

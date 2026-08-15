@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'customer_info_page.dart';
-import '../mode.dart';
-import '../operation_type.dart';
+import '../app_enum.dart';
 
 class ChargePage extends StatelessWidget {
   const ChargePage({super.key});
