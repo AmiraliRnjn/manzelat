@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'camera_page.dart';
+import 'nfc_scan_page.dart';
 import '../app_enum.dart';
 import '../models/customer_data.dart';
 
@@ -102,10 +103,14 @@ class _CustomerInfoPageState extends State<CustomerInfoPage> {
         break;
     }
 
+    final hasTicket = customer.cards.contains(CardType.ticket);
+
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => CameraPage(customer: customer),
+        builder: (_) => hasTicket
+            ? NfcScanPage(customer: customer)
+            : CameraPage(customer: customer),
       ),
     );
   }

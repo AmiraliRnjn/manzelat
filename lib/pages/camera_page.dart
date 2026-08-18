@@ -12,7 +12,6 @@ import 'dart:ui' as ui;
 import 'package:image/image.dart' as img;
 import 'package:archive/archive_io.dart';
 import 'package:share_plus/share_plus.dart';
-import '../services/native_nfc_service.dart';
 
 
 class _StyledDialog extends StatelessWidget {
@@ -272,7 +271,13 @@ class _StyledTextField extends StatelessWidget {
 
 class CameraPage extends StatefulWidget {
   final CustomerData customer;
-  const CameraPage({super.key, required this.customer});
+  final String? ticketNumber;
+
+  const CameraPage({
+    super.key,
+    required this.customer,
+    this.ticketNumber,
+  });
 
   @override
   State<CameraPage> createState() => _CameraPageState();
@@ -287,9 +292,6 @@ class _CameraPageState extends State<CameraPage> {
 
 bool isTakingPicture = false;
 
-  bool isReadingNfc = false;
-  String nfcStatus = 'NFC آماده نیست';
-
   final List<Map<String, dynamic>> savedCardsData = [];
   final Map<CardType, TextEditingController> textControllers = {};
 
@@ -300,65 +302,12 @@ bool isTakingPicture = false;
 
     // Explicitly initialize controllers for all 3 required input fields
     // so they are guaranteed to exist in memory regardless of widget.customer.cards
-    textControllers[CardType.ticket] = TextEditingController();
+    textControllers[CardType.ticket] = TextEditingController(
+      text: widget.customer.ticketNumber ?? '',
+    );
     textControllers[CardType.national] = TextEditingController();
     textControllers[CardType.manzelat] = TextEditingController();
 
-    NativeNfcService.setTagListener(_handleNativeNfcTag);
-  }
-
-  Future<void> _handleNativeNfcTag(dynamic arguments) async {
-    if (!mounted) return;
-
-    try {
-      final map = Map<dynamic, dynamic>.from(arguments as Map);
-
-      final uidHex = (map['uid'] ?? '').toString();
-      final ticketNumber = (map['ticketNumber'] ?? '').toString();
-
-      if (uidHex.isEmpty || ticketNumber.isEmpty) {
-        throw Exception('UID یا شماره بلیت از Android دریافت نشد.');
-      }
-
-      textControllers[CardType.ticket]?.text = ticketNumber;
-
-      setState(() {
-        isReadingNfc = false;
-        nfcStatus =
-            'کارت شناسایی شد\n'
-            'شماره بلیت: $ticketNumber';
-      });
-
-      await showDialog<void>(
-        context: context,
-        builder: (context) => _StyledDialog(
-          icon: Icons.check_circle_rounded,
-          iconColor: const Color(0xFF35B96B),
-          title: 'کارت با موفقیت خوانده شد',
-          content: 'شماره بلیت:\n$ticketNumber',
-          actions: [
-            _DialogButton(
-              text: 'تأیید',
-              filled: true,
-              color: const Color(0xFF1565C0),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ],
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-
-      setState(() {
-        isReadingNfc = false;
-        nfcStatus = 'خطا در دریافت اطلاعات کارت:\n$e';
-      });
-
-      _showStyledSnackBar(
-        'خطا در دریافت UID کارت: $e',
-        isError: true,
-      );
-    }
   }
 
   Future<void> initializeCamera() async {
@@ -451,85 +400,6 @@ Future<void> takePicture() async {
       return Uint8List.fromList(img.encodeJpg(decodedImage, quality: 85));
     } catch (e) {
       return null;
-    }
-  }
-
-  // ================================================================
-  // NFC reader - Android / MIFARE Classic
-  // ================================================================
-
-  String _uidToHex(Uint8List uid) {
-    return uid
-        .map((b) => b.toRadixString(16).padLeft(2, '0').toUpperCase())
-        .join(':');
-  }
-
-  String _ticketNumberFromUid(Uint8List uid) {
-    if (uid.length != 4) {
-      throw Exception(
-        'UID این کارت باید 4 بایت باشد؛ UID دریافت‌شده ${uid.length} بایت است.',
-      );
-    }
-
-    // 49:6F:84:71
-    // -> 0x71846F49 (little-endian)
-    // -> 1904504649
-    final value =
-        (uid[0]) |
-        (uid[1] << 8) |
-        (uid[2] << 16) |
-        (uid[3] << 24);
-
-    return (value & 0xFFFFFFFF).toString();
-  }
-
-  Future<void> _startNfcReader() async {
-    if (isReadingNfc) return;
-
-    try {
-      setState(() {
-        isReadingNfc = true;
-        nfcStatus = 'NFC فعال شد؛ کارت را پشت گوشی قرار دهید...';
-      });
-
-      await NativeNfcService.startReader();
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'کارت را پشت گوشی، نزدیک قسمت NFC، ثابت نگه دارید.',
-          ),
-          duration: Duration(seconds: 4),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-
-      setState(() {
-        isReadingNfc = false;
-        nfcStatus = 'خطا در فعال‌سازی NFC:\n$e';
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('فعال‌سازی NFC ناموفق بود: $e'),
-        ),
-      );
-    }
-  }
-
-  Future<void> _stopNfcReader() async {
-    try {
-      await NativeNfcService.stopReader();
-    } catch (_) {}
-
-    if (mounted) {
-      setState(() {
-        isReadingNfc = false;
-        nfcStatus = 'NFC متوقف شد';
-      });
     }
   }
 
@@ -775,15 +645,28 @@ Future<void> takePicture() async {
                         .text
                         .trim();
 
-                    // ۲. بررسی خالی نبودن فیلدها بر اساس دکمه فشرده شده (کنترل خطا)
-                    if ((!isShohadaCustomer && ticketText.isEmpty) ||
-                        nationalText.isEmpty ||
-                        manzelatText.isEmpty) {
+                    // ۲. فقط فیلدهای مربوط به مدارک انتخاب‌شده باید پر باشند.
+                    // سریال کارت بلیت اگر از NFC آمده باشد از قبل پر شده است.
+                    final hasTicket =
+                        widget.customer.cards.contains(CardType.ticket);
+                    final hasNational =
+                        widget.customer.cards.contains(CardType.national);
+                    final hasManzelat =
+                        widget.customer.cards.contains(CardType.manzelat);
+
+                    if ((hasTicket && ticketText.isEmpty) ||
+                        (hasNational && nationalText.isEmpty) ||
+                        (hasManzelat && manzelatText.isEmpty)) {
                       _showStyledSnackBar(
-                        'لطفاً تمامی فیلدها را وارد کنید',
+                        'لطفاً نام فایل مدارک انتخاب‌شده را کامل کنید',
                         isError: true,
                       );
                       return;
+                    }
+
+                    // شماره بلیت NFC را هم در مدل مشتری نگه می‌داریم.
+                    if (hasTicket && ticketText.isNotEmpty) {
+                      widget.customer.ticketNumber = ticketText;
                     }
 
                     // ۳. باز کردن دیالوگ لودینگ
@@ -802,7 +685,13 @@ Future<void> takePicture() async {
                           );
 
                       if (customerFolder == null) {
-                        if (mounted) Navigator.pop(this.context);
+                        if (mounted) {
+                          Navigator.pop(this.context);
+                          _showStyledSnackBar(
+                            'محل ذخیره‌سازی مشخص نشده است. ابتدا مسیر ذخیره‌سازی را از تنظیمات تعیین کنید.',
+                            isError: true,
+                          );
+                        }
                         return;
                       }
                       if (!await customerFolder.exists()) {
@@ -917,12 +806,17 @@ Future<void> takePicture() async {
                       if (!mounted) return;
                       Navigator.pop(this.context);
                       await _showSuccessDialog(customerFolder.path, zipFile);
-                    } catch (e) {
-                      if (mounted) Navigator.pop(this.context);
-                      _showStyledSnackBar(
-                        'خطا: $e',
-                        isError: true,
-                      );
+                    } catch (e, stackTrace) {
+                      debugPrint('FINAL SAVE ERROR: $e');
+                      debugPrintStack(stackTrace: stackTrace);
+
+                      if (mounted) {
+                        Navigator.pop(this.context);
+                        _showStyledSnackBar(
+                          'ذخیره انجام نشد: $e',
+                          isError: true,
+                        );
+                      }
                     }
                   },
                 ),
@@ -1198,56 +1092,6 @@ Future<void> takePicture() async {
                             ),
                           ),
                         ),
-
-                        if (currentCard == CardType.ticket) ...[
-                          const SizedBox(height: 9),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 51,
-                            child: OutlinedButton.icon(
-                              onPressed: isReadingNfc
-                                  ? _stopNfcReader
-                                  : _startNfcReader,
-                              icon: Icon(
-                                isReadingNfc
-                                    ? Icons.stop_circle_outlined
-                                    : Icons.nfc_rounded,
-                              ),
-                              label: Text(
-                                isReadingNfc
-                                    ? 'توقف خواندن NFC'
-                                    : 'خواندن شماره بلیت با NFC',
-                                style: const TextStyle(
-                                  fontFamily: 'Traffic',
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: const Color(0xFF1565C0),
-                                side: const BorderSide(
-                                  color: Color(0xFF1565C0),
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(17),
-                                ),
-                              ),
-                            ),
-                          ),
-                          if (nfcStatus.isNotEmpty) ...[
-                            const SizedBox(height: 8),
-                            Text(
-                              nfcStatus,
-                              textDirection: TextDirection.rtl,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: Color(0xFF64748B),
-                                fontFamily: 'Traffic',
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ],
                       ] else ...[
                         Row(
                           children: [
@@ -1483,8 +1327,6 @@ Future<void> takePicture() async {
 
   @override
   void dispose() {
-    NativeNfcService.removeTagListener();
-    NativeNfcService.stopReader().catchError((_) {});
     cameraController?.dispose();
     for (var c in textControllers.values) {
       c.dispose();
