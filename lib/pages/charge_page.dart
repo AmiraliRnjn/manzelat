@@ -53,7 +53,7 @@ class ChargePage extends StatelessWidget {
                     child: IconButton(
                       onPressed: () => Navigator.pop(context),
                       icon: const Icon(
-                        Icons.arrow_forward_rounded,
+                        Icons.arrow_back_rounded,
                         color: Colors.white,
                         size: 30,
                       ),
@@ -177,15 +177,23 @@ class _ChargeOptionCard extends StatelessWidget {
           child: Row(
             textDirection: TextDirection.rtl,
             children: [
-              const Icon(
-                Icons.chevron_left_rounded,
-                color: Color(0xFF6B7280),
-                size: 31,
+              Container(
+                width: 58,
+                height: 58,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(17),
+                ),
+                child: Icon(
+                  icon,
+                  color: color,
+                  size: 31,
+                ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
@@ -214,18 +222,10 @@ class _ChargeOptionCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 14),
-              Container(
-                width: 58,
-                height: 58,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.10),
-                  borderRadius: BorderRadius.circular(17),
-                ),
-                child: Icon(
-                  icon,
-                  color: color,
-                  size: 31,
-                ),
+                const Icon(
+                Icons.chevron_right_rounded,
+                color: Color(0xFF6B7280),
+                size: 31,
               ),
             ],
           ),

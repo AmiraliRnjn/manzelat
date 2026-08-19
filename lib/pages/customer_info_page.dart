@@ -147,7 +147,7 @@ class _CustomerInfoPageState extends State<CustomerInfoPage> {
                     child: IconButton(
                       onPressed: () => Navigator.pop(context),
                       icon: const Icon(
-                        Icons.arrow_forward_rounded,
+                        Icons.arrow_back_rounded,
                         color: Colors.white,
                         size: 30,
                       ),
@@ -214,7 +214,7 @@ class _CustomerInfoPageState extends State<CustomerInfoPage> {
                                 const SizedBox(width: 14),
                                 const Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'نام مشتری',
