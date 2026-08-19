@@ -284,42 +284,6 @@ class _CustomerInfoPageState extends State<CustomerInfoPage> {
 
                     const SizedBox(height: 18),
 
-                    // Information hint
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEFF6FF),
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: const Row(
-                        textDirection: TextDirection.rtl,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(
-                            Icons.info_outline_rounded,
-                            color: primaryBlue,
-                            size: 24,
-                          ),
-                          SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              'پس از ثبت نام، مدارک موردنیاز این مشتری برای عکاسی نمایش داده می‌شود.',
-                              textDirection: TextDirection.rtl,
-                              textAlign: TextAlign.right,
-                              style: TextStyle(
-                                color: Color(0xFF334155),
-                                fontFamily: 'Traffic',
-                                fontSize: 14,
-                                height: 1.5,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 28),
-
                     SizedBox(
                       height: 58,
                       child: ElevatedButton(
@@ -355,6 +319,45 @@ class _CustomerInfoPageState extends State<CustomerInfoPage> {
                         ),
                       ),
                     ),
+
+                    const SizedBox(height: 18),
+
+                    // Information hint
+Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: const Row(
+                        textDirection: TextDirection.rtl,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.info_outline_rounded,
+                            color: primaryBlue,
+                            size: 24,
+                          ),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'پس از ثبت نام، مدارک موردنیاز این مشتری برای عکاسی نمایش داده می‌شود.',
+                              textDirection: TextDirection.rtl,
+                              textAlign: TextAlign.right,
+                              style: TextStyle(
+                                color: Color(0xFF334155),
+                                fontFamily: 'Traffic',
+                                fontSize: 14,
+                                height: 1.5,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    
+
                   ],
                 ),
               ),

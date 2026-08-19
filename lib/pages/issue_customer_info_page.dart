@@ -245,6 +245,29 @@ class _IssueCustomerInfoPageState extends State<IssueCustomerInfoPage> {
                       ),
                     ),
                     const SizedBox(height: 18),
+                    SizedBox(
+                      height: 55,
+                      child: ElevatedButton.icon(
+                        onPressed: _startProcess,
+                        icon: const Icon(Icons.arrow_back_rounded),
+                        label: const Text(
+                          'شروع',
+                          style: TextStyle(
+                            fontFamily: 'Traffic',
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryBlue,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(17),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -283,28 +306,6 @@ class _IssueCustomerInfoPageState extends State<IssueCustomerInfoPage> {
                       ),
                     ),
                     const SizedBox(height: 18),
-                    SizedBox(
-                      height: 55,
-                      child: ElevatedButton.icon(
-                        onPressed: _startProcess,
-                        icon: const Icon(Icons.arrow_back_rounded),
-                        label: const Text(
-                          'شروع صدور',
-                          style: TextStyle(
-                            fontFamily: 'Traffic',
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: primaryBlue,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(17),
-                          ),
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
