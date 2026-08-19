@@ -534,13 +534,6 @@ Future<void> takePicture() async {
     );
   }
 
-  bool get isShohadaCustomer {
-    return widget.customer.cards.length == 2 &&
-        widget.customer.cards.contains(CardType.national) &&
-        widget.customer.cards.contains(CardType.personalPhoto) &&
-        !widget.customer.cards.contains(CardType.ticket) &&
-        !widget.customer.cards.contains(CardType.manzelat);
-  }
 
   Future<void> showFinalSaveDialog() async {
     return showDialog<void>(
@@ -595,15 +588,12 @@ Future<void> takePicture() async {
                     ),
                     const SizedBox(height: 14),
 
-                    // برای شهدا شماره بلیت لازم نیست.
-                    if (!isShohadaCustomer) ...[
                       _StyledTextField(
                         controller: textControllers[CardType.ticket]!,
                         label: 'سریال پشت کارت بلیط را وارد کنید',
                         icon: Icons.confirmation_number_outlined,
                       ),
                       const SizedBox(height: 12),
-                    ],
 
                     // فیلد دوم: کد ملی
                     _StyledTextField(

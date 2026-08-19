@@ -73,6 +73,7 @@ class _CustomerInfoPageState extends State<CustomerInfoPage> {
 
       case Mode.shohada:
         customer.cards = [
+          CardType.ticket,
           CardType.national,
           CardType.personalPhoto,
         ];
