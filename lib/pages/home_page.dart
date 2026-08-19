@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:manzelat/pages/charge_category_page.dart';
 import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import 'settings_page.dart';
-import 'customer_info_page.dart';
+import 'issue_category_page.dart';
 import 'file_manager_page.dart';
 import '../services/work_date_service.dart';
 import '../app_enum.dart';
@@ -30,12 +30,8 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _loadWorkDate() async {
     final date = await WorkDateService.getWorkDate();
-
     if (!mounted) return;
-
-    setState(() {
-      workDate = date;
-    });
+    setState(() => workDate = date);
   }
 
   Future<void> _pickWorkDate() async {
@@ -45,31 +41,23 @@ class _HomePageState extends State<HomePage> {
       firstDate: Jalali(1400, 1),
       lastDate: Jalali(1450, 12),
     );
-
     if (picked == null) return;
-
     await WorkDateService.setWorkDate(picked);
-
     if (!mounted) return;
-
-    setState(() {
-      workDate = picked;
-    });
+    setState(() => workDate = picked);
   }
 
   void _openCharge() {
-    Navigator.push(context, MaterialPageRoute(builder: (context) => ChargeCategoryPage(),));
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ChargeCategoryPage()),
+    );
   }
 
   void _openIssue() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => const CustomerInfoPage(
-          mode: Mode.export,
-          operationType: OperationType.issue,
-        ),
-      ),
+      MaterialPageRoute(builder: (_) => const IssueCategoryPage()),
     );
   }
 
@@ -77,8 +65,9 @@ class _HomePageState extends State<HomePage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) =>
-            const FileManagerPage(operationType: OperationType.charge),
+        builder: (_) => const FileManagerPage(
+          operationType: OperationType.charge,
+        ),
       ),
     );
   }
@@ -87,8 +76,9 @@ class _HomePageState extends State<HomePage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) =>
-            const FileManagerPage(operationType: OperationType.issue),
+        builder: (_) => const FileManagerPage(
+          operationType: OperationType.issue,
+        ),
       ),
     );
   }
@@ -96,9 +86,7 @@ class _HomePageState extends State<HomePage> {
   void _openSettings() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => const SettingsPage(),
-      ),
+      MaterialPageRoute(builder: (_) => const SettingsPage()),
     );
   }
 
@@ -110,10 +98,7 @@ class _HomePageState extends State<HomePage> {
         gradient: LinearGradient(
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
-          colors: [
-            Color(0xFF0D47B5),
-            Color(0xFF1976D2),
-          ],
+          colors: [Color(0xFF0D47B5), Color(0xFF1976D2)],
         ),
         borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(42),
@@ -246,10 +231,7 @@ class _HomePageState extends State<HomePage> {
               gradient: LinearGradient(
                 begin: Alignment.topRight,
                 end: Alignment.bottomLeft,
-                colors: [
-                  color.withOpacity(0.88),
-                  color,
-                ],
+                colors: [color.withOpacity(0.88), color],
               ),
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
@@ -263,11 +245,7 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  icon,
-                  color: Colors.white,
-                  size: 46,
-                ),
+                Icon(icon, color: Colors.white, size: 46),
                 const SizedBox(height: 10),
                 Text(
                   title,
@@ -312,10 +290,7 @@ class _HomePageState extends State<HomePage> {
         borderRadius: BorderRadius.circular(20),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 15,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
           child: Row(
             textDirection: TextDirection.rtl,
             children: [
@@ -326,11 +301,7 @@ class _HomePageState extends State<HomePage> {
                   color: color.withOpacity(0.10),
                   borderRadius: BorderRadius.circular(17),
                 ),
-                child: Icon(
-                  icon,
-                  color: color,
-                  size: 31,
-                ),
+                child: Icon(icon, color: color, size: 31),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -377,20 +348,17 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFAFBFF),
-
       body: SafeArea(
         bottom: false,
         child: Column(
           children: [
             _buildHeader(),
-
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.only(bottom: 24),
                 child: Column(
                   children: [
                     _buildActiveDateCard(),
-
                     Transform.translate(
                       offset: const Offset(0, -18),
                       child: Padding(
@@ -418,9 +386,7 @@ class _HomePageState extends State<HomePage> {
                                 ),
                               ],
                             ),
-
                             const SizedBox(height: 28),
-
                             const Text(
                               'پوشه‌ها',
                               textDirection: TextDirection.rtl,
@@ -431,18 +397,14 @@ class _HomePageState extends State<HomePage> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-
                             const SizedBox(height: 12),
-
                             _buildFolderTile(
                               title: 'پوشه‌های شارژ',
                               icon: Icons.folder_rounded,
                               color: purple,
                               onTap: _openChargeFolders,
                             ),
-
                             const SizedBox(height: 12),
-
                             _buildFolderTile(
                               title: 'پوشه‌های صدور',
                               icon: Icons.folder_rounded,
@@ -460,7 +422,6 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
-
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         currentIndex: currentIndex,
@@ -479,13 +440,9 @@ class _HomePageState extends State<HomePage> {
         ),
         onTap: (index) {
           if (index == 0) {
-            setState(() {
-              currentIndex = 0;
-            });
+            setState(() => currentIndex = 0);
           } else {
-            setState(() {
-              currentIndex = 1;
-            });
+            setState(() => currentIndex = 1);
             _openSettings();
           }
         },
@@ -498,7 +455,6 @@ class _HomePageState extends State<HomePage> {
             icon: Icon(Icons.settings_rounded),
             label: 'تنظیمات',
           ),
-          
         ],
       ),
     );
