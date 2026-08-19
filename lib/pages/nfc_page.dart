@@ -101,24 +101,91 @@ class _NfcPageState extends State<NfcPage> {
         context: context,
         barrierDismissible: false,
         builder: (context) {
-          return AlertDialog(
-            title: const Text(
-              'کارت با موفقیت خوانده شد',
-              textDirection: TextDirection.rtl,
-            ),
-            content: Text(
-              'سریال کارت بلیت:\n$ticketNumber',
-              textDirection: TextDirection.rtl,
-              textAlign: TextAlign.right,
-            ),
-            actions: [
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                child: const Text('ادامه'),
+          return Directionality(
+            textDirection: TextDirection.rtl,
+            child: AlertDialog(
+              backgroundColor: const Color(0xFFFAFBFF),
+              surfaceTintColor: Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(26),
               ),
-            ],
+              titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+              contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
+              actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
+              title: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF16A34A).withOpacity(0.10),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(
+                      Icons.check_circle_rounded,
+                      color: Color(0xFF16A34A),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'کارت با موفقیت خوانده شد',
+                      style: TextStyle(
+                        fontFamily: 'Traffic',
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF172554),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              content: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Color(0xFFE2E8F0)),
+                ),
+                child: Text(
+                  'سریال کارت بلیت:\n$ticketNumber',
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    fontFamily: 'Traffic',
+                    fontSize: 15,
+                    height: 1.7,
+                    color: Color(0xFF475569),
+                  ),
+                ),
+              ),
+              actions: [
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1565C0),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: const Text(
+                      'ادامه',
+                      style: TextStyle(
+                        fontFamily: 'Traffic',
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           );
         },
       );
@@ -220,12 +287,22 @@ class _NfcPageState extends State<NfcPage> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
         content: Text(
           message,
           textDirection: TextDirection.rtl,
+          style: const TextStyle(
+            fontFamily: 'Traffic',
+            fontSize: 14,
+          ),
         ),
-        backgroundColor:
-            isError ? Colors.red.shade700 : null,
+        backgroundColor: isError
+            ? const Color(0xFFDC2626)
+            : const Color(0xFF172554),
       ),
     );
   }
@@ -241,163 +318,314 @@ class _NfcPageState extends State<NfcPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAFBFF),
+    const primaryBlue = Color(0xFF1565C0);
+    const darkBlue = Color(0xFF172554);
+    const textSecondary = Color(0xFF64748B);
+    const borderColor = Color(0xFFE2E8F0);
+    const background = Color(0xFFFAFBFF);
 
+    return Scaffold(
+      backgroundColor: background,
       appBar: AppBar(
+        backgroundColor: background,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: true,
+        iconTheme: const IconThemeData(color: darkBlue),
         title: const Text(
           'خواندن کارت بلیت',
           style: TextStyle(
             fontFamily: 'Traffic',
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: darkBlue,
           ),
         ),
-        centerTitle: true,
       ),
-
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            children: [
-              const SizedBox(height: 30),
+        child: Directionality(
+          textDirection: TextDirection.rtl,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+            child: Column(
+              children: [
+                const SizedBox(height: 12),
 
-              Container(
-                width: 110,
-                height: 110,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1565C0)
-                      .withOpacity(0.10),
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: Icon(
-                  manualMode
-                      ? Icons.edit_rounded
-                      : Icons.nfc_rounded,
-                  size: 60,
-                  color: const Color(0xFF1565C0),
-                ),
-              ),
-
-              const SizedBox(height: 25),
-
-              Text(
-                manualMode
-                    ? 'ورود دستی سریال'
-                    : 'خواندن کارت بلیت',
-                textDirection: TextDirection.rtl,
-                style: const TextStyle(
-                  fontFamily: 'Traffic',
-                  fontSize: 25,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF172554),
-                ),
-              ),
-
-              const SizedBox(height: 14),
-
-              Text(
-                manualMode
-                    ? 'سریال پشت کارت بلیت را وارد کنید.'
-                    : 'کارت بلیت را پشت گوشی قرار دهید.',
-                textDirection: TextDirection.rtl,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontFamily: 'Traffic',
-                  fontSize: 16,
-                  color: Color(0xFF64748B),
-                ),
-              ),
-
-              const SizedBox(height: 35),
-
-              if (manualMode) ...[
-                TextField(
-                  controller: manualController,
-                  keyboardType: TextInputType.number,
-                  textDirection: TextDirection.ltr,
-                  textAlign: TextAlign.center,
-                  decoration: InputDecoration(
-                    labelText: 'سریال کارت بلیت',
-                    hintText: 'سریال را وارد کنید',
-                    prefixIcon: const Icon(
-                      Icons.confirmation_number_outlined,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                SizedBox(
-                  width: double.infinity,
-                  height: 55,
-                  child: ElevatedButton(
-                    onPressed: _continueWithManualNumber,
-                    child: const Text(
-                      'ادامه',
-                      style: TextStyle(
-                        fontFamily: 'Traffic',
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ] else ...[
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(18),
+                // آیکن اصلی صفحه
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  width: 112,
+                  height: 112,
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: const Color(0xFFE2E8F0),
-                    ),
+                    color: primaryBlue.withOpacity(0.10),
+                    borderRadius: BorderRadius.circular(32),
                   ),
-                  child: Column(
-                    children: [
-                      const CircularProgressIndicator(),
+                  child: Icon(
+                    manualMode ? Icons.edit_rounded : Icons.nfc_rounded,
+                    size: 58,
+                    color: primaryBlue,
+                  ),
+                ),
 
-                      const SizedBox(height: 18),
+                const SizedBox(height: 24),
 
-                      Text(
-                        nfcStatus,
-                        textDirection: TextDirection.rtl,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontFamily: 'Traffic',
-                          fontSize: 15,
-                          color: Color(0xFF475569),
+                Text(
+                  manualMode ? 'ورود دستی سریال' : 'خواندن کارت بلیت',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontFamily: 'Traffic',
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: darkBlue,
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+
+                Text(
+                  manualMode
+                      ? 'سریال پشت کارت بلیت را وارد کنید.'
+                      : 'کارت بلیت را پشت گوشی، نزدیک قسمت NFC قرار دهید.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontFamily: 'Traffic',
+                    fontSize: 15.5,
+                    height: 1.7,
+                    color: textSecondary,
+                  ),
+                ),
+
+                const SizedBox(height: 28),
+
+                if (manualMode) ...[
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: borderColor),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.035),
+                          blurRadius: 18,
+                          offset: const Offset(0, 7),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 42,
+                              height: 42,
+                              decoration: BoxDecoration(
+                                color: primaryBlue.withOpacity(0.10),
+                                borderRadius: BorderRadius.circular(13),
+                              ),
+                              child: const Icon(
+                                Icons.confirmation_number_outlined,
+                                color: primaryBlue,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            const Expanded(
+                              child: Text(
+                                'شماره سریال کارت',
+                                style: TextStyle(
+                                  fontFamily: 'Traffic',
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: darkBlue,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 18),
+                        TextField(
+                          controller: manualController,
+                          keyboardType: TextInputType.number,
+                          textDirection: TextDirection.ltr,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontFamily: 'Traffic',
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: darkBlue,
+                            letterSpacing: 1.2,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'سریال را وارد کنید',
+                            hintStyle: const TextStyle(
+                              fontFamily: 'Traffic',
+                              fontSize: 14,
+                              color: Color(0xFF94A3B8),
+                            ),
+                            filled: true,
+                            fillColor: const Color(0xFFF8FAFC),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 17,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: const BorderSide(color: borderColor),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: const BorderSide(color: borderColor),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: const BorderSide(
+                                color: primaryBlue,
+                                width: 1.6,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        _primaryButton(
+                          label: 'ادامه',
+                          icon: Icons.arrow_back_rounded,
+                          onPressed: _continueWithManualNumber,
+                          color: primaryBlue,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-
-                const Spacer(),
-
-                SizedBox(
-                  width: double.infinity,
-                  height: 55,
-                  child: OutlinedButton.icon(
+                ] else ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 22),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: borderColor),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.035),
+                          blurRadius: 18,
+                          offset: const Offset(0, 7),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            color: primaryBlue.withOpacity(0.09),
+                            shape: BoxShape.circle,
+                          ),
+                          padding: const EdgeInsets.all(18),
+                          child: const CircularProgressIndicator(
+                            strokeWidth: 3,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              primaryBlue,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        const Text(
+                          'در انتظار کارت بلیت',
+                          style: TextStyle(
+                            fontFamily: 'Traffic',
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: darkBlue,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          nfcStatus,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontFamily: 'Traffic',
+                            fontSize: 14.5,
+                            height: 1.7,
+                            color: textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  _secondaryButton(
+                    label: 'ورود دستی سریال',
+                    icon: Icons.edit_rounded,
                     onPressed: _enableManualMode,
-                    icon: const Icon(
-                      Icons.edit_rounded,
-                    ),
-                    label: const Text(
-                      'رد کردن اسکن و ورود دستی',
-                      style: TextStyle(
-                        fontFamily: 'Traffic',
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    color: primaryBlue,
                   ),
-                ),
+                ],
               ],
-            ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _primaryButton({
+    required String label,
+    required IconData icon,
+    required VoidCallback onPressed,
+    required Color color,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon, size: 20),
+        label: Text(
+          label,
+          style: const TextStyle(
+            fontFamily: 'Traffic',
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(17),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _secondaryButton({
+    required String label,
+    required IconData icon,
+    required VoidCallback onPressed,
+    required Color color,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon, size: 20),
+        label: Text(
+          label,
+          style: const TextStyle(
+            fontFamily: 'Traffic',
+            fontSize: 15.5,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: color,
+          side: BorderSide(color: color.withOpacity(0.28), width: 1.2),
+          backgroundColor: color.withOpacity(0.035),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(17),
           ),
         ),
       ),
