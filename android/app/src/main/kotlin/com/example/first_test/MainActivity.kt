@@ -1,6 +1,9 @@
 package com.example.first_test
 
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.nfc.NfcAdapter
 import android.nfc.Tag
 import android.nfc.tech.MifareClassic
@@ -26,6 +29,7 @@ class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
 
     private var nfcAdapter: NfcAdapter? = null
     private var nfcMethodChannel: MethodChannel? = null
+    private var nfcStateReceiver: BroadcastReceiver? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -76,19 +80,63 @@ class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
                     result.success(null)
                 }
 
+                "isNfcEnabled" -> {
+                    result.success(nfcAdapter?.isEnabled == true)
+                }
+
+                "openNfcSettings" -> {
+                    try {
+                        startActivity(Intent(Settings.ACTION_NFC_SETTINGS))
+                        result.success(true)
+                    } catch (_: Exception) {
+                        result.success(false)
+                    }
+                }
+
                 else -> result.notImplemented()
             }
         }
 
         nfcAdapter = NfcAdapter.getDefaultAdapter(this)
 
-        sendDebug(
-            "NFC INITIALIZED",
-            "Device: ${Build.MANUFACTURER} ${Build.MODEL}\n" +
-                "Android: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})\n" +
-                "NfcAdapter: ${nfcAdapter != null}\n" +
-                "NFC enabled: ${nfcAdapter?.isEnabled == true}"
-        )
+        registerNfcStateReceiver()
+        sendNfcState()
+    }
+
+    private fun registerNfcStateReceiver() {
+        if (nfcStateReceiver != null) return
+
+        nfcStateReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                if (intent?.action == NfcAdapter.ACTION_ADAPTER_STATE_CHANGED) {
+                    sendNfcState()
+                }
+            }
+        }
+
+        val filter = IntentFilter(NfcAdapter.ACTION_ADAPTER_STATE_CHANGED)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(
+                nfcStateReceiver,
+                filter,
+                Context.RECEIVER_NOT_EXPORTED
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            registerReceiver(nfcStateReceiver, filter)
+        }
+    }
+
+    private fun sendNfcState() {
+        Handler(Looper.getMainLooper()).post {
+            nfcMethodChannel?.invokeMethod(
+                "onNfcState",
+                mapOf(
+                    "enabled" to (nfcAdapter?.isEnabled == true)
+                )
+            )
+        }
     }
 
     private fun startNfcReader() {
@@ -104,36 +152,22 @@ class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
             NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK or
             NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS
 
-        Log.d(TAG, "STARTING NFC READER MODE")
-
-        sendDebug(
-            "READER STARTED",
-            "Reader Mode فعال شد.\n" +
-                "منتظر Tag هستیم...\n\n" +
-                "اگر بعد از نزدیک کردن کارت پیام TAG DISCOVERED نیامد، " +
-                "Android کارت را به ReaderCallback تحویل نداده است."
-        )
-
         adapter.enableReaderMode(this, this, flags, Bundle())
     }
 
     private fun stopNfcReader() {
         try {
             nfcAdapter?.disableReaderMode(this)
-            sendDebug("READER STOPPED", "Reader Mode متوقف شد.")
         } catch (e: Exception) {
             Log.e(TAG, "disableReaderMode failed", e)
         }
     }
 
     override fun onTagDiscovered(tag: Tag) {
-        Log.d(TAG, "========== TAG DISCOVERED ==========")
-
         try {
             val uid = tag.id
 
             if (uid == null || uid.isEmpty()) {
-                sendDebug("TAG FOUND - NO UID", "Tag پیدا شد ولی UID خالی است.")
                 return
             }
 
@@ -188,22 +222,6 @@ class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
                 ticketNumber = value.toString()
             }
 
-            val debug = buildString {
-                append("UID:\n$uidHex\n\n")
-                append("UID length: ${uid.size} bytes\n\n")
-                append("TECH LIST:\n")
-                append(if (techNames.isEmpty()) "EMPTY" else techNames.joinToString("\n"))
-                append("\n\nNFC-A: ${nfcA != null}\n")
-                append("ATQA: ${if (atqa.isEmpty()) "N/A" else atqa}\n")
-                append("SAK: ${if (sak.isEmpty()) "N/A" else sak}\n\n")
-                append("MIFARE CLASSIC: ${if (mifare != null) "YES" else "NO"}\n")
-                if (mifareInfo.isNotEmpty()) append("$mifareInfo\n")
-                append("\nCALCULATED TICKET NUMBER: ")
-                append(if (ticketNumber.isEmpty()) "NOT CALCULATED" else ticketNumber)
-            }
-
-            Log.d(TAG, debug)
-
             Handler(Looper.getMainLooper()).post {
                 nfcMethodChannel?.invokeMethod(
                     "onNfcTag",
@@ -216,8 +234,7 @@ class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
                         "sak" to sak,
                         "mifareClassic" to (mifare != null),
                         "mifareInfo" to mifareInfo,
-                        "ticketNumber" to ticketNumber,
-                        "debug" to debug
+                        "ticketNumber" to ticketNumber
                     )
                 )
 
@@ -232,23 +249,10 @@ class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
                     mapOf(
                         "uid" to "",
                         "ticketNumber" to "",
-                        "error" to (e.message ?: "خطای ناشناخته"),
-                        "debug" to Log.getStackTraceString(e)
+                        "error" to (e.message ?: "خطای ناشناخته")
                     )
                 )
             }
-        }
-    }
-
-    private fun sendDebug(title: String, message: String) {
-        Handler(Looper.getMainLooper()).post {
-            nfcMethodChannel?.invokeMethod(
-                "onNfcDebug",
-                mapOf(
-                    "title" to title,
-                    "message" to message
-                )
-            )
         }
     }
 
@@ -256,6 +260,7 @@ class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
         try {
             nfcAdapter?.disableReaderMode(this)
         } catch (_: Exception) {}
+
         super.onPause()
     }
 
@@ -264,8 +269,16 @@ class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
             nfcAdapter?.disableReaderMode(this)
         } catch (_: Exception) {}
 
+        try {
+            nfcStateReceiver?.let {
+                unregisterReceiver(it)
+            }
+        } catch (_: Exception) {}
+
+        nfcStateReceiver = null
         nfcMethodChannel?.setMethodCallHandler(null)
         nfcMethodChannel = null
+
         super.onDestroy()
     }
 }

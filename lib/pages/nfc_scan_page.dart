@@ -16,33 +16,105 @@ class NfcScanPage extends StatefulWidget {
   State<NfcScanPage> createState() => _NfcScanPageState();
 }
 
-class _NfcScanPageState extends State<NfcScanPage> {
+class _NfcScanPageState extends State<NfcScanPage>
+    with WidgetsBindingObserver {
+  static const primaryBlue = Color(0xFF1565C0);
+  static const darkBlue = Color(0xFF172554);
+  static const background = Color(0xFFFAFBFF);
+  static const textSecondary = Color(0xFF64748B);
+  static const border = Color(0xFFE2E8F0);
+  static const success = Color(0xFF16A34A);
+  static const error = Color(0xFFDC2626);
+
   final TextEditingController manualSerialController =
       TextEditingController();
 
   bool isReading = false;
   bool manualMode = false;
-  String status = 'در حال آماده‌سازی NFC...';
+  bool nfcEnabled = false;
+  bool checkingNfc = true;
+
+  String status = 'در حال بررسی وضعیت NFC...';
 
   @override
   void initState() {
     super.initState();
-    NativeNfcService.setTagListener(_onNfcTag);
-    _startNfc();
+    WidgetsBinding.instance.addObserver(this);
+
+    NativeNfcService.setListeners(
+      onTag: _onNfcTag,
+      onState: _onNfcStateChanged,
+    );
+
+    _refreshNfcStatus();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshNfcStatus();
+    }
+  }
+
+  Future<void> _onNfcStateChanged(bool enabled) async {
+    if (!mounted) return;
+
+    setState(() {
+      nfcEnabled = enabled;
+      checkingNfc = false;
+    });
+
+    if (!enabled) {
+      await _stopNfc();
+      if (!mounted || manualMode) return;
+      setState(() {
+        status = 'NFC خاموش است. آن را روشن کنید تا اسکن شروع شود.';
+      });
+      return;
+    }
+
+    if (!manualMode && !isReading) {
+      await _startNfc();
+    } else if (!manualMode) {
+      setState(() {
+        status = 'NFC روشن است؛ کارت بلیت را پشت گوشی قرار دهید.';
+      });
+    }
+  }
+
+  Future<void> _refreshNfcStatus() async {
+    if (!mounted) return;
+
+    setState(() {
+      checkingNfc = true;
+    });
+
+    try {
+      final enabled = await NativeNfcService.isNfcEnabled();
+      await _onNfcStateChanged(enabled);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        checkingNfc = false;
+        nfcEnabled = false;
+        status = 'وضعیت NFC قابل تشخیص نیست.';
+      });
+    }
   }
 
   Future<void> _startNfc() async {
-    if (isReading || manualMode) return;
+    if (isReading || manualMode || !nfcEnabled) return;
 
     try {
       setState(() {
         isReading = true;
-        status = 'کارت بلیت را پشت گوشی قرار دهید...';
+        status = 'کارت بلیت را پشت گوشی، نزدیک قسمت NFC قرار دهید...';
       });
 
       await NativeNfcService.startReader();
     } catch (e) {
       if (!mounted) return;
+
       setState(() {
         isReading = false;
         status = 'فعال‌سازی NFC ناموفق بود.';
@@ -55,7 +127,8 @@ class _NfcScanPageState extends State<NfcScanPage> {
 
     try {
       final map = Map<dynamic, dynamic>.from(arguments as Map);
-      final ticketNumber = (map['ticketNumber'] ?? '').toString().trim();
+      final ticketNumber =
+          (map['ticketNumber'] ?? '').toString().trim();
 
       if (ticketNumber.isEmpty) {
         throw Exception('شماره سریال از کارت دریافت نشد.');
@@ -75,27 +148,41 @@ class _NfcScanPageState extends State<NfcScanPage> {
         context: context,
         barrierDismissible: false,
         builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
           title: const Text(
             'کارت با موفقیت خوانده شد',
             textDirection: TextDirection.rtl,
+            style: TextStyle(
+              fontFamily: 'Traffic',
+              fontWeight: FontWeight.bold,
+              color: darkBlue,
+            ),
           ),
           content: Text(
             'سریال کارت بلیت:\n$ticketNumber',
             textDirection: TextDirection.rtl,
             textAlign: TextAlign.right,
+            style: const TextStyle(
+              fontFamily: 'Traffic',
+              fontSize: 15,
+              color: textSecondary,
+            ),
           ),
           actions: [
-            TextButton(
+            ElevatedButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('ادامه'),
+              child: const Text(
+                'ادامه',
+                style: TextStyle(fontFamily: 'Traffic'),
+              ),
             ),
           ],
         ),
       );
 
-      if (mounted) {
-        _goToCamera();
-      }
+      if (mounted) _goToCamera();
     } catch (e) {
       if (!mounted) return;
 
@@ -105,14 +192,7 @@ class _NfcScanPageState extends State<NfcScanPage> {
         status = 'خطا در خواندن کارت.';
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'خواندن NFC ناموفق بود: $e',
-            textDirection: TextDirection.rtl,
-          ),
-        ),
-      );
+      _showMessage('خواندن NFC ناموفق بود: $e', isError: true);
     }
   }
 
@@ -125,6 +205,14 @@ class _NfcScanPageState extends State<NfcScanPage> {
       setState(() {
         isReading = false;
       });
+    }
+  }
+
+  Future<void> _openNfcSettings() async {
+    try {
+      await NativeNfcService.openNfcSettings();
+    } catch (_) {
+      _showMessage('امکان باز کردن تنظیمات NFC وجود ندارد.', isError: true);
     }
   }
 
@@ -143,24 +231,7 @@ class _NfcScanPageState extends State<NfcScanPage> {
     final serial = manualSerialController.text.trim();
 
     if (serial.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          backgroundColor: const Color(0xFFDC2626),
-          content: const Text(
-            'لطفاً سریال کارت بلیت را وارد کنید.',
-            textDirection: TextDirection.rtl,
-            style: TextStyle(
-              fontFamily: 'Traffic',
-              fontSize: 14,
-            ),
-          ),
-        ),
-      );
+      _showMessage('لطفاً سریال کارت بلیت را وارد کنید.', isError: true);
       return;
     }
 
@@ -172,8 +243,26 @@ class _NfcScanPageState extends State<NfcScanPage> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) => CameraPage(
-          customer: widget.customer,
+        builder: (_) => CameraPage(customer: widget.customer),
+      ),
+    );
+  }
+
+  void _showMessage(String message, {bool isError = false}) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        backgroundColor: isError ? error : primaryBlue,
+        content: Text(
+          message,
+          textDirection: TextDirection.rtl,
+          style: const TextStyle(fontFamily: 'Traffic'),
         ),
       ),
     );
@@ -181,6 +270,7 @@ class _NfcScanPageState extends State<NfcScanPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     NativeNfcService.removeTagListener();
     NativeNfcService.stopReader().catchError((_) {});
     manualSerialController.dispose();
@@ -189,12 +279,6 @@ class _NfcScanPageState extends State<NfcScanPage> {
 
   @override
   Widget build(BuildContext context) {
-    const primaryBlue = Color(0xFF1565C0);
-    const darkBlue = Color(0xFF172554);
-    const textSecondary = Color(0xFF64748B);
-    const borderColor = Color(0xFFE2E8F0);
-    const background = Color(0xFFFAFBFF);
-
     return Scaffold(
       backgroundColor: background,
       appBar: AppBar(
@@ -202,7 +286,6 @@ class _NfcScanPageState extends State<NfcScanPage> {
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: true,
-        iconTheme: const IconThemeData(color: darkBlue),
         title: const Text(
           'کارت بلیت',
           style: TextStyle(
@@ -212,232 +295,269 @@ class _NfcScanPageState extends State<NfcScanPage> {
             color: darkBlue,
           ),
         ),
+        iconTheme: const IconThemeData(color: darkBlue),
       ),
       body: SafeArea(
-        child: Directionality(
-          textDirection: TextDirection.rtl,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-            child: Column(
-              children: [
-                const SizedBox(height: 12),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
+          child: Column(
+            children: [
+              const SizedBox(height: 8),
+              _buildHero(),
+              const SizedBox(height: 24),
+              if (manualMode) _buildManual() else _buildNfcCard(),
+              const SizedBox(height: 16),
+              if (!manualMode) _buildManualButton(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-                Container(
-                  width: 112,
-                  height: 112,
-                  decoration: BoxDecoration(
-                    color: primaryBlue.withOpacity(0.10),
-                    borderRadius: BorderRadius.circular(32),
-                  ),
-                  child: Icon(
-                    manualMode ? Icons.edit_rounded : Icons.nfc_rounded,
-                    size: 58,
-                    color: primaryBlue,
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                Text(
-                  manualMode ? 'ورود دستی سریال' : 'خواندن کارت بلیت',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontFamily: 'Traffic',
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    color: darkBlue,
-                  ),
-                ),
-
-                const SizedBox(height: 10),
-
-                Text(
-                  manualMode
-                      ? 'سریال پشت کارت بلیت را وارد کنید.'
-                      : 'کارت بلیت را پشت گوشی، نزدیک قسمت NFC قرار دهید.',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontFamily: 'Traffic',
-                    fontSize: 15.5,
-                    height: 1.7,
-                    color: textSecondary,
-                  ),
-                ),
-
-                const SizedBox(height: 28),
-
-                if (manualMode) ...[
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: borderColor),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.035),
-                          blurRadius: 18,
-                          offset: const Offset(0, 7),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 42,
-                              height: 42,
-                              decoration: BoxDecoration(
-                                color: primaryBlue.withOpacity(0.10),
-                                borderRadius: BorderRadius.circular(13),
-                              ),
-                              child: const Icon(
-                                Icons.confirmation_number_outlined,
-                                color: primaryBlue,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            const Expanded(
-                              child: Text(
-                                'شماره سریال کارت',
-                                style: TextStyle(
-                                  fontFamily: 'Traffic',
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: darkBlue,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 18),
-                        TextField(
-                          controller: manualSerialController,
-                          keyboardType: TextInputType.number,
-                          textDirection: TextDirection.ltr,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontFamily: 'Traffic',
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: darkBlue,
-                            letterSpacing: 1.2,
-                          ),
-                          decoration: InputDecoration(
-                            hintText: 'سریال را وارد کنید',
-                            hintStyle: const TextStyle(
-                              fontFamily: 'Traffic',
-                              fontSize: 14,
-                              color: Color(0xFF94A3B8),
-                            ),
-                            filled: true,
-                            fillColor: const Color(0xFFF8FAFC),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 17,
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: const BorderSide(color: borderColor),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: const BorderSide(color: borderColor),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: const BorderSide(
-                                color: primaryBlue,
-                                width: 1.6,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                        _primaryButton(
-                          label: 'ادامه',
-                          icon: Icons.arrow_back_rounded,
-                          onPressed: _continueManual,
-                          color: primaryBlue,
-                        ),
-                      ],
-                    ),
-                  ),
-                ] else ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 22),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: borderColor),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.035),
-                          blurRadius: 18,
-                          offset: const Offset(0, 7),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        Container(
-                          width: 64,
-                          height: 64,
-                          decoration: BoxDecoration(
-                            color: primaryBlue.withOpacity(0.09),
-                            shape: BoxShape.circle,
-                          ),
-                          padding: const EdgeInsets.all(18),
-                          child: isReading
-                              ? const CircularProgressIndicator(
-                                  strokeWidth: 3,
-                                  valueColor:
-                                      AlwaysStoppedAnimation<Color>(
-                                    primaryBlue,
-                                  ),
-                                )
-                              : const Icon(
-                                  Icons.nfc_rounded,
-                                  color: primaryBlue,
-                                  size: 30,
-                                ),
-                        ),
-                        const SizedBox(height: 18),
-                        const Text(
-                          'در انتظار کارت بلیت',
-                          style: TextStyle(
-                            fontFamily: 'Traffic',
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                            color: darkBlue,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          status,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontFamily: 'Traffic',
-                            fontSize: 14.5,
-                            height: 1.7,
-                            color: textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  _secondaryButton(
-                    label: 'ورود دستی سریال',
-                    icon: Icons.edit_rounded,
-                    onPressed: _skipNfc,
-                    color: primaryBlue,
-                  ),
-                ],
-              ],
+  Widget _buildHero() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(22, 24, 22, 26),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+          colors: [Color(0xFF0D47B5), Color(0xFF1976D2)],
+        ),
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: [
+          BoxShadow(
+            color: primaryBlue.withOpacity(0.18),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 82,
+            height: 82,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.14),
+              borderRadius: BorderRadius.circular(24),
             ),
+            child: Icon(
+              manualMode ? Icons.edit_rounded : Icons.nfc_rounded,
+              color: Colors.white,
+              size: 46,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            manualMode ? 'ورود دستی سریال' : 'خواندن کارت بلیت',
+            textDirection: TextDirection.rtl,
+            style: const TextStyle(
+              fontFamily: 'Traffic',
+              fontSize: 25,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            manualMode
+                ? 'سریال پشت کارت بلیت را وارد کنید.'
+                : 'کارت بلیت را پشت گوشی، نزدیک قسمت NFC قرار دهید.',
+            textDirection: TextDirection.rtl,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontFamily: 'Traffic',
+              fontSize: 15,
+              color: Colors.white70,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNfcCard() {
+    final Color stateColor =
+        checkingNfc ? primaryBlue : (nfcEnabled ? success : error);
+
+    final IconData stateIcon =
+        checkingNfc
+            ? Icons.sync_rounded
+            : (nfcEnabled
+                ? Icons.check_circle_rounded
+                : Icons.nfc_rounded);
+
+    final String stateTitle =
+        checkingNfc
+            ? 'در حال بررسی NFC'
+            : (nfcEnabled ? 'NFC روشن است' : 'NFC خاموش است');
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: border),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 12,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            textDirection: TextDirection.rtl,
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: stateColor.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(stateIcon, color: stateColor, size: 29),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  textDirection: TextDirection.rtl,
+                  children: [
+                    Text(
+                      stateTitle,
+                      textDirection: TextDirection.rtl,
+                      style: TextStyle(
+                        fontFamily: 'Traffic',
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: stateColor,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      status,
+                      textDirection: TextDirection.rtl,
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        fontFamily: 'Traffic',
+                        fontSize: 14,
+                        color: textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (!nfcEnabled && !checkingNfc) ...[
+            const SizedBox(height: 18),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton.icon(
+                onPressed: _openNfcSettings,
+                icon: const Icon(Icons.settings_rounded, size: 21),
+                label: const Text(
+                  'روشن کردن NFC',
+                  style: TextStyle(
+                    fontFamily: 'Traffic',
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildManual() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: border),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 12,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          TextField(
+            controller: manualSerialController,
+            keyboardType: TextInputType.number,
+            textDirection: TextDirection.ltr,
+            textAlign: TextAlign.center,
+            decoration: InputDecoration(
+              labelText: 'سریال کارت بلیت',
+              hintText: 'سریال را وارد کنید',
+              prefixIcon: const Icon(Icons.confirmation_number_outlined),
+              filled: true,
+              fillColor: background,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(18),
+                borderSide: const BorderSide(color: border),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(18),
+                borderSide: const BorderSide(color: border),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(18),
+                borderSide: const BorderSide(
+                  color: primaryBlue,
+                  width: 1.5,
+                ),
+              ),
+              labelStyle: const TextStyle(fontFamily: 'Traffic'),
+              hintStyle: const TextStyle(fontFamily: 'Traffic'),
+            ),
+          ),
+          const SizedBox(height: 16),
+          _primaryButton(
+            label: 'ادامه',
+            icon: Icons.arrow_forward_rounded,
+            onPressed: _continueManual,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildManualButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: OutlinedButton.icon(
+        onPressed: _skipNfc,
+        icon: const Icon(Icons.edit_rounded, size: 21),
+        label: const Text(
+          'رد کردن اسکن و ورود دستی',
+          style: TextStyle(
+            fontFamily: 'Traffic',
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: primaryBlue,
+          side: const BorderSide(color: Color(0xFFB8C7E6)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
           ),
         ),
       ),
@@ -448,60 +568,28 @@ class _NfcScanPageState extends State<NfcScanPage> {
     required String label,
     required IconData icon,
     required VoidCallback onPressed,
-    required Color color,
   }) {
     return SizedBox(
       width: double.infinity,
-      height: 56,
+      height: 54,
       child: ElevatedButton.icon(
         onPressed: onPressed,
-        icon: Icon(icon, size: 20),
+        icon: Icon(icon, size: 21),
         label: Text(
           label,
           style: const TextStyle(
             fontFamily: 'Traffic',
-            fontSize: 16,
+            fontSize: 17,
             fontWeight: FontWeight.bold,
           ),
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: color,
+          backgroundColor: primaryBlue,
           foregroundColor: Colors.white,
-          elevation: 0,
+          elevation: 2,
+          shadowColor: primaryBlue.withOpacity(0.25),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(17),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _secondaryButton({
-    required String label,
-    required IconData icon,
-    required VoidCallback onPressed,
-    required Color color,
-  }) {
-    return SizedBox(
-      width: double.infinity,
-      height: 56,
-      child: OutlinedButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon, size: 20),
-        label: Text(
-          label,
-          style: const TextStyle(
-            fontFamily: 'Traffic',
-            fontSize: 15.5,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: color,
-          side: BorderSide(color: color.withOpacity(0.28), width: 1.2),
-          backgroundColor: color.withOpacity(0.035),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(17),
+            borderRadius: BorderRadius.circular(18),
           ),
         ),
       ),
