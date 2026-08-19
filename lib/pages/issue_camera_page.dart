@@ -273,6 +273,23 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
   CardType get currentCard =>
       widget.customer.cards[widget.customer.currentCardIndex];
 
+  // مدرک هر دسته که شماره تلفن روی آن ثبت می‌شود (به ازای هر دسته فقط یکی
+  // از این‌ها در لیست مدارک آن دسته وجود دارد).
+  static const List<CardType> _phoneNumberCandidates = [
+    CardType.manzelat,
+    CardType.veteranCard,
+    CardType.martyrCard,
+    CardType.behzistiCard,
+    CardType.studentcard,
+  ];
+
+  CardType? get _phoneNumberCardType {
+    for (final candidate in _phoneNumberCandidates) {
+      if (widget.customer.cards.contains(candidate)) return candidate;
+    }
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -281,8 +298,9 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
     if (widget.customer.cards.contains(CardType.national)) {
       textControllers[CardType.national] = TextEditingController();
     }
-    if (widget.customer.cards.contains(CardType.manzelat)) {
-      textControllers[CardType.manzelat] = TextEditingController();
+    final phoneCard = _phoneNumberCardType;
+    if (phoneCard != null) {
+      textControllers[phoneCard] = TextEditingController();
     }
   }
 
@@ -313,13 +331,21 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
   String getCardName(CardType card) {
     switch (card) {
       case CardType.national:
-        return 'کارت ملی';
+        return 'اصل کارت ملی';
       case CardType.manzelat:
         return 'کارت منزلت';
       case CardType.personalPhoto:
         return 'عکس پرسنلی';
       case CardType.studentcard:
-        return 'کارت دانشجویی یا گواهی اشتغال';
+        return 'کارت دانشجویی اعتبار دار استان تهران';
+      case CardType.veteranCard:
+        return 'کارت جانبازی استان تهران';
+      case CardType.shenasnameh:
+        return 'اصل شناسنامه (صفحه دوم یا سوم)';
+      case CardType.martyrCard:
+        return 'کارت بنیاد شهید استان تهران';
+      case CardType.behzistiCard:
+        return 'کارت بهزیستی استان تهران';
       case CardType.ticket:
         throw StateError('Ticket is not allowed in issue flow.');
     }
@@ -335,6 +361,14 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
         return Icons.school_rounded;
       case CardType.personalPhoto:
         return Icons.person_rounded;
+      case CardType.veteranCard:
+        return Icons.shield_rounded;
+      case CardType.shenasnameh:
+        return Icons.menu_book_rounded;
+      case CardType.martyrCard:
+        return Icons.local_florist_rounded;
+      case CardType.behzistiCard:
+        return Icons.accessible_rounded;
       case CardType.ticket:
         throw StateError('Ticket is not allowed in issue flow.');
     }
@@ -507,17 +541,25 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
 
   String _safeFileName(CardType type) {
     final national = textControllers[CardType.national]?.text.trim() ?? '';
-    final manzelat = textControllers[CardType.manzelat]?.text.trim() ?? '';
+    final phoneCard = _phoneNumberCardType;
+    final phoneNumber =
+        phoneCard != null ? (textControllers[phoneCard]?.text.trim() ?? '') : '';
 
     switch (type) {
       case CardType.national:
         return national;
       case CardType.manzelat:
-        return manzelat;
+      case CardType.veteranCard:
+      case CardType.martyrCard:
+      case CardType.behzistiCard:
+      case CardType.studentcard:
+        // برای مدرکی که شماره تلفن رویش ثبت می‌شود، همان شماره نام فایل است.
+        if (type == phoneCard) return phoneNumber;
+        return '${widget.customer.fullName}_${getCardName(type)}';
       case CardType.personalPhoto:
         return '${widget.customer.fullName}_پرسنلی';
-      case CardType.studentcard:
-        return '${widget.customer.fullName}_گواهی';
+      case CardType.shenasnameh:
+        return '${widget.customer.fullName}_شناسنامه';
       case CardType.ticket:
         throw StateError('Ticket is not allowed in issue flow.');
     }
@@ -581,10 +623,10 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
                     icon: Icons.badge_outlined,
                   ),
 
-                if (widget.customer.cards.contains(CardType.manzelat)) ...[
+                if (_phoneNumberCardType != null) ...[
                   const SizedBox(height: 12),
                   _StyledTextField(
-                    controller: textControllers[CardType.manzelat]!,
+                    controller: textControllers[_phoneNumberCardType]!,
                     label: 'شماره تلفن همراه را وارد کنید',
                     icon: Icons.phone_outlined,
                   ),
@@ -628,13 +670,13 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
               onPressed: () async {
                 final hasNational =
                     widget.customer.cards.contains(CardType.national);
-                final hasManzelat =
-                    widget.customer.cards.contains(CardType.manzelat);
+                final phoneCard = _phoneNumberCardType;
 
                 final national =
                     textControllers[CardType.national]?.text.trim() ?? '';
-                final manzelat =
-                    textControllers[CardType.manzelat]?.text.trim() ?? '';
+                final phoneNumber = phoneCard != null
+                    ? (textControllers[phoneCard]?.text.trim() ?? '')
+                    : '';
 
                 if (hasNational && national.isEmpty) {
                   _showStyledSnackBar(
@@ -644,7 +686,7 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
                   return;
                 }
 
-                if (hasManzelat && manzelat.isEmpty) {
+                if (phoneCard != null && phoneNumber.isEmpty) {
                   _showStyledSnackBar(
                     'لطفاً شماره تلفن همراه را وارد کنید.',
                     isError: true,
@@ -1187,3 +1229,4 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
     super.dispose();
   }
 }
+

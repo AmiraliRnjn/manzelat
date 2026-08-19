@@ -27,18 +27,30 @@ class _IssueCustomerInfoPageState extends State<IssueCustomerInfoPage> {
           CardType.manzelat,
           CardType.personalPhoto,
         ];
-      case 'دانشجویی و دانش‌آموزی':
+      case 'جانبازان':
         return [
+          CardType.veteranCard,
           CardType.national,
-          CardType.studentcard,
+          CardType.shenasnameh,
           CardType.personalPhoto,
         ];
       case 'شهدا':
-      case 'جانبازان':
-      case 'معلولین':
+        return [
+          CardType.national,
+          CardType.martyrCard,
+          CardType.personalPhoto,
+        ];
+      case 'بهزیستی':
+        return [
+          CardType.national,
+          CardType.behzistiCard,
+          CardType.personalPhoto,
+        ];
+      case 'دانشجویی و دانش‌آموزی':
       default:
         return [
           CardType.national,
+          CardType.studentcard,
           CardType.personalPhoto,
         ];
     }
@@ -319,11 +331,19 @@ class _IssueCustomerInfoPageState extends State<IssueCustomerInfoPage> {
   String _cardName(CardType card) {
     switch (card) {
       case CardType.national:
-        return 'کارت ملی';
+        return 'اصل کارت ملی';
       case CardType.manzelat:
         return 'کارت منزلت';
       case CardType.studentcard:
-        return 'کارت دانشجویی یا گواهی اشتغال به تحصیل';
+        return 'کارت دانشجویی اعتبار دار استان تهران';
+      case CardType.veteranCard:
+        return 'کارت جانبازی استان تهران';
+      case CardType.shenasnameh:
+        return 'اصل شناسنامه (صفحه دوم یا سوم)';
+      case CardType.martyrCard:
+        return 'کارت بنیاد شهید استان تهران';
+      case CardType.behzistiCard:
+        return 'کارت بهزیستی استان تهران';
       case CardType.personalPhoto:
         return 'عکس پرسنلی';
       case CardType.ticket:
@@ -331,3 +351,4 @@ class _IssueCustomerInfoPageState extends State<IssueCustomerInfoPage> {
     }
   }
 }
+

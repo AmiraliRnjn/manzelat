@@ -339,6 +339,11 @@ bool isTakingPicture = false;
         return 'عکس پرسنلی';
       case CardType.studentcard:
         return 'عکس کارت دانشجویی یا گواهی اشتغال';
+      case CardType.veteranCard:
+      case CardType.shenasnameh:
+      case CardType.martyrCard:
+      case CardType.behzistiCard:
+        throw StateError('این نوع مدرک در بخش شارژ استفاده نمی‌شود.');
     }
   }
 
@@ -352,6 +357,11 @@ bool isTakingPicture = false;
         return 'سریال پشت کارت بلیط';
       case CardType.personalPhoto:
         return 'عکس پرسنلی';
+      case CardType.veteranCard:
+      case CardType.shenasnameh:
+      case CardType.martyrCard:
+      case CardType.behzistiCard:
+        throw StateError('این نوع مدرک در بخش شارژ استفاده نمی‌شود.');
     }
   }
 
@@ -1324,3 +1334,4 @@ Future<void> takePicture() async {
     super.dispose();
   }
 }
+

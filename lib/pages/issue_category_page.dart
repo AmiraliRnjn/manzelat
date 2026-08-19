@@ -99,11 +99,11 @@ class IssueCategoryPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
                   _CategoryCard(
-                    title: 'معلولین',
-                    subtitle: 'صدور کارت معلولین',
+                    title: 'بهزیستی',
+                    subtitle: 'صدور کارت بهزیستی',
                     icon: Icons.accessible_rounded,
                     color: const Color(0xFF35B96B),
-                    onTap: () => _openCustomerInfo(context, 'معلولین'),
+                    onTap: () => _openCustomerInfo(context, 'بهزیستی'),
                   ),
                   const SizedBox(height: 14),
                   _CategoryCard(
@@ -210,3 +210,4 @@ class _CategoryCard extends StatelessWidget {
     );
   }
 }
+

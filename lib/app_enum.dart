@@ -17,4 +17,8 @@ enum CardType {
   ticket,
   personalPhoto,
   studentcard,
+  veteranCard,
+  shenasnameh,
+  martyrCard,
+  behzistiCard,
 }
