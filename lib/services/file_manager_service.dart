@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:archive/archive_io.dart';
 import '../app_enum.dart';
 import 'storage_settings_service.dart';
@@ -148,12 +149,12 @@ class FileManagerService {
     });
   }
 
-  /// یک عکس دستی‌انتخاب‌شده (از گالری یا دوربین) را با نام دلخواه کاربر
-  /// داخل پوشه‌ی مشتری کپی می‌کند. اگر فایل هم‌نامی وجود داشته باشد،
-  /// بازنویسی می‌شود (تأیید بازنویسی در لایه‌ی UI گرفته می‌شود).
-  static Future<File> addImageToFolder({
+  /// عکسِ برش‌خورده (بایت‌های JPG) را با نام دلخواه کاربر داخل پوشه‌ی
+  /// مشتری ذخیره می‌کند. اگر فایل هم‌نامی وجود داشته باشد، بازنویسی می‌شود
+  /// (تأیید بازنویسی در لایه‌ی UI گرفته می‌شود).
+  static Future<File> addImageBytesToFolder({
     required Directory folder,
-    required File sourceImage,
+    required Uint8List bytes,
     required String desiredName,
   }) async {
     if (!await folder.exists()) {
@@ -161,14 +162,10 @@ class FileManagerService {
     }
 
     final sanitized = _sanitize(desiredName);
-    final originalName = sourceImage.path.split(Platform.pathSeparator).last;
-    final dotIndex = originalName.lastIndexOf('.');
-    final ext = dotIndex != -1 ? originalName.substring(dotIndex + 1) : 'jpg';
-
     final targetPath =
-        [folder.path, '$sanitized.$ext'].join(Platform.pathSeparator);
+        [folder.path, '$sanitized.jpg'].join(Platform.pathSeparator);
 
-    return sourceImage.copy(targetPath);
+    return File(targetPath).writeAsBytes(bytes, flush: true);
   }
 
   // --------------------------------------------------------------------

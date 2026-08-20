@@ -1,5 +1,9 @@
 import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+import 'package:crop_image/crop_image.dart';
 import 'package:flutter/material.dart';
+import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:share_plus/share_plus.dart';
@@ -737,6 +741,15 @@ class _FolderContentsPageState extends State<_FolderContentsPage> {
     final XFile? picked = await picker.pickImage(source: source, imageQuality: 90);
     if (picked == null) return;
 
+    if (!mounted) return;
+    final Uint8List? croppedBytes = await Navigator.push<Uint8List?>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _ImageCropPage(imageFile: File(picked.path)),
+      ),
+    );
+    if (croppedBytes == null) return;
+
     final name = await _askForFileName();
     if (name == null || name.trim().isEmpty) return;
     final trimmedName = name.trim();
@@ -749,9 +762,9 @@ class _FolderContentsPageState extends State<_FolderContentsPage> {
     setState(() => _isAdding = true);
 
     try {
-      await FileManagerService.addImageToFolder(
+      await FileManagerService.addImageBytesToFolder(
         folder: widget.folder,
-        sourceImage: File(picked.path),
+        bytes: croppedBytes,
         desiredName: trimmedName,
       );
 
@@ -810,6 +823,146 @@ class _FolderContentsPageState extends State<_FolderContentsPage> {
               )
             : const Icon(Icons.add_a_photo_rounded),
         label: const Text('افزودن عکس'),
+      ),
+    );
+  }
+}
+
+/// صفحه‌ی برش عکسِ تازه اضافه‌شده به پوشه — دقیقاً همان تجربه‌ی برش که در
+/// دوربین اصلی (issue_camera_page.dart) استفاده می‌شود، با پکیج crop_image.
+class _ImageCropPage extends StatefulWidget {
+  final File imageFile;
+
+  const _ImageCropPage({required this.imageFile});
+
+  @override
+  State<_ImageCropPage> createState() => _ImageCropPageState();
+}
+
+class _ImageCropPageState extends State<_ImageCropPage> {
+  final CropController cropController = CropController();
+  bool _isProcessing = false;
+
+  Future<Uint8List?> _cropToJpg() async {
+    try {
+      final ui.Image bitmap = await cropController.croppedBitmap();
+      final ByteData? byteData = await bitmap.toByteData(
+        format: ui.ImageByteFormat.png,
+      );
+      if (byteData == null) return null;
+
+      final img.Image? decodedImage =
+          img.decodeImage(byteData.buffer.asUint8List());
+      if (decodedImage == null) return null;
+
+      return Uint8List.fromList(img.encodeJpg(decodedImage, quality: 85));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _confirm() async {
+    setState(() => _isProcessing = true);
+    final bytes = await _cropToJpg();
+    if (!mounted) return;
+
+    if (bytes == null) {
+      setState(() => _isProcessing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('برش تصویر انجام نشد.')),
+      );
+      return;
+    }
+
+    Navigator.pop(context, bytes);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          backgroundColor: Colors.black,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          title: const Text('برش عکس'),
+        ),
+        body: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: CropImage(
+                  controller: cropController,
+                  image: Image.file(
+                    widget.imageFile,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 53,
+                        child: OutlinedButton.icon(
+                          onPressed: _isProcessing
+                              ? null
+                              : () => Navigator.pop(context),
+                          icon: const Icon(Icons.close_rounded),
+                          label: const Text(
+                            'انصراف',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: const BorderSide(color: Colors.white54),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(17),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: SizedBox(
+                        height: 53,
+                        child: ElevatedButton.icon(
+                          onPressed: _isProcessing ? null : _confirm,
+                          icon: _isProcessing
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.check_rounded),
+                          label: const Text(
+                            'تأیید برش',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF35B96B),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(17),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
