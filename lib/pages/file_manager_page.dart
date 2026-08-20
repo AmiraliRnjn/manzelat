@@ -747,6 +747,8 @@ class _FolderContentsPageState extends State<_FolderContentsPage> {
       // می‌کنه و هم پردازش برش رو کند می‌کنه.
       maxWidth: 1280,
       maxHeight: 1280,
+      // برای عکاسی از مدرک، دوربین پشت باید پیش‌فرض باز شود، نه سلفی.
+      preferredCameraDevice: CameraDevice.rear,
     );
     if (picked == null) return;
 
