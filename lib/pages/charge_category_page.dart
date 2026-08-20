@@ -6,14 +6,15 @@ import 'package:manzelat/pages/customer_info_page.dart';
 class ChargeCategoryPage extends StatelessWidget {
   const ChargeCategoryPage({super.key});
 
-  // Navigatorها عمداً خالی گذاشته شده‌اند.
-  // بعداً مسیر هر دسته را اینجا اضافه می‌کنیم.
   void _onCategorySelected(BuildContext context, String category) {
-    // TODO: Navigator.push(...)
     if(category=='منزلت'){
       Navigator.push(context, MaterialPageRoute(builder: (context) => ChargePage(),));
+    }else if (category=='جانبازان'){
+      Navigator.push(context, MaterialPageRoute(builder: (context) => CustomerInfoPage(mode:Mode.janbaz , operationType: OperationType.charge),));
     }else if (category=='شهدا'){
       Navigator.push(context, MaterialPageRoute(builder: (context) => CustomerInfoPage(mode:Mode.shohada , operationType: OperationType.charge),));
+    }else if (category=='بهزیستی'){
+      Navigator.push(context, MaterialPageRoute(builder: (context) => CustomerInfoPage(mode:Mode.behzisti , operationType: OperationType.charge),));
     }else if (category=='دانشجویی و دانش‌آموزی'){
       Navigator.push(context, MaterialPageRoute(builder: (context) => CustomerInfoPage(mode:Mode.daneshjo , operationType: OperationType.charge),));
     }
@@ -112,11 +113,11 @@ class ChargeCategoryPage extends StatelessWidget {
                   const SizedBox(height: 14),
 
                   _CategoryCard(
-                    title: 'معلولین',
-                    subtitle: 'شارژ کارت معلولین',
+                    title: 'بهزیستی',
+                    subtitle: 'شارژ کارت بهزیستی',
                     icon: Icons.accessible_rounded,
                     color: const Color(0xFF35B96B),
-                    onTap: () => _onCategorySelected(context, 'معلولین'),
+                    onTap: () => _onCategorySelected(context, 'بهزیستی'),
                   ),
                   const SizedBox(height: 14),
 
@@ -232,3 +233,4 @@ class _CategoryCard extends StatelessWidget {
     );
   }
 }
+

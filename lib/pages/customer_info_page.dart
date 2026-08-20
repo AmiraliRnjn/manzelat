@@ -75,6 +75,7 @@ class _CustomerInfoPageState extends State<CustomerInfoPage> {
         customer.cards = [
           CardType.ticket,
           CardType.national,
+          CardType.martyrCard,
           CardType.personalPhoto,
         ];
         break;
@@ -84,6 +85,25 @@ class _CustomerInfoPageState extends State<CustomerInfoPage> {
           CardType.ticket,
           CardType.national,
           CardType.studentcard,
+          CardType.personalPhoto,
+        ];
+        break;
+
+      case Mode.janbaz:
+        customer.cards = [
+          CardType.ticket,
+          CardType.veteranCard,
+          CardType.national,
+          CardType.shenasnameh,
+          CardType.personalPhoto,
+        ];
+        break;
+
+      case Mode.behzisti:
+        customer.cards = [
+          CardType.ticket,
+          CardType.national,
+          CardType.behzistiCard,
           CardType.personalPhoto,
         ];
         break;
@@ -374,3 +394,4 @@ Container(
     super.dispose();
   }
 }
+

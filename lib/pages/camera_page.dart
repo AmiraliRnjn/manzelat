@@ -295,6 +295,36 @@ bool isTakingPicture = false;
   final List<Map<String, dynamic>> savedCardsData = [];
   final Map<CardType, TextEditingController> textControllers = {};
 
+  // مدارک مخصوص دسته‌های جدید (جانبازان/شهدا/بهزیستی/دانشجویی) که وقتی در
+  // مدارک مشتری باشند یعنی این جریان یکی از حالت‌های منعطف قدیمی منزلت
+  // (مدارک دارد/کارت ملی ندارد/کارت منزلت ندارد/هیچ‌کدام ندارد) نیست، بلکه
+  // یکی از دسته‌های جدید با مدارک ثابت خودش است.
+  static const List<CardType> _newCategoryCardTypes = [
+    CardType.veteranCard,
+    CardType.shenasnameh,
+    CardType.martyrCard,
+    CardType.behzistiCard,
+    CardType.studentcard,
+  ];
+
+  bool get _isNewCategoryFlow =>
+      widget.customer.cards.any(_newCategoryCardTypes.contains);
+
+  // مدرکی که شماره تلفن مشتری رویش ثبت می‌شود (برای دسته‌های جدید).
+  static const List<CardType> _phoneNumberCandidates = [
+    CardType.veteranCard,
+    CardType.martyrCard,
+    CardType.behzistiCard,
+    CardType.studentcard,
+  ];
+
+  CardType? get _phoneNumberCardType {
+    for (final candidate in _phoneNumberCandidates) {
+      if (widget.customer.cards.contains(candidate)) return candidate;
+    }
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -308,6 +338,11 @@ bool isTakingPicture = false;
     textControllers[CardType.national] = TextEditingController();
     textControllers[CardType.manzelat] = TextEditingController();
 
+    // برای دسته‌های جدید، کنترلر مدرک مخصوص شماره تلفن همان دسته را هم می‌سازیم.
+    final phoneCard = _phoneNumberCardType;
+    if (phoneCard != null) {
+      textControllers[phoneCard] = TextEditingController();
+    }
   }
 
   Future<void> initializeCamera() async {
@@ -338,12 +373,15 @@ bool isTakingPicture = false;
       case CardType.personalPhoto:
         return 'عکس پرسنلی';
       case CardType.studentcard:
-        return 'عکس کارت دانشجویی یا گواهی اشتغال';
+        return 'کارت دانشجویی اعتبار دار استان تهران';
       case CardType.veteranCard:
+        return 'کارت جانبازی استان تهران';
       case CardType.shenasnameh:
+        return 'شناسنامه (صفحه دوم یا سوم)';
       case CardType.martyrCard:
+        return 'کارت بنیاد شهید استان تهران';
       case CardType.behzistiCard:
-        throw StateError('این نوع مدرک در بخش شارژ استفاده نمی‌شود.');
+        return 'کارت بهزیستی استان تهران';
     }
   }
 
@@ -351,17 +389,41 @@ bool isTakingPicture = false;
     switch (cardType) {
       case CardType.national:
         return 'کد ملی';
-      case CardType.manzelat || CardType.studentcard:
+      case CardType.manzelat ||
+            CardType.studentcard ||
+            CardType.veteranCard ||
+            CardType.martyrCard ||
+            CardType.behzistiCard:
         return 'شماره همراه';
       case CardType.ticket:
         return 'سریال پشت کارت بلیط';
       case CardType.personalPhoto:
         return 'عکس پرسنلی';
-      case CardType.veteranCard:
       case CardType.shenasnameh:
+        return 'شناسنامه';
+    }
+  }
+
+  IconData getCardIcon(CardType card) {
+    switch (card) {
+      case CardType.ticket:
+        return Icons.credit_card_rounded;
+      case CardType.national:
+        return Icons.badge_rounded;
+      case CardType.manzelat:
+        return Icons.card_membership_rounded;
+      case CardType.studentcard:
+        return Icons.school_rounded;
+      case CardType.veteranCard:
+        return Icons.shield_rounded;
+      case CardType.shenasnameh:
+        return Icons.menu_book_rounded;
       case CardType.martyrCard:
+        return Icons.local_florist_rounded;
       case CardType.behzistiCard:
-        throw StateError('این نوع مدرک در بخش شارژ استفاده نمی‌شود.');
+        return Icons.accessible_rounded;
+      case CardType.personalPhoto:
+        return Icons.person_rounded;
     }
   }
 
@@ -605,20 +667,37 @@ Future<void> takePicture() async {
                       ),
                       const SizedBox(height: 12),
 
-                    // فیلد دوم: کد ملی
-                    _StyledTextField(
-                      controller: textControllers[CardType.national]!,
-                      label: 'کد ملی را وارد کنید',
-                      icon: Icons.badge_outlined,
-                    ),
-                    const SizedBox(height: 12),
+                    if (!_isNewCategoryFlow) ...[
+                      // فیلد دوم: کد ملی
+                      _StyledTextField(
+                        controller: textControllers[CardType.national]!,
+                        label: 'کد ملی را وارد کنید',
+                        icon: Icons.badge_outlined,
+                      ),
+                      const SizedBox(height: 12),
 
-                    // فیلد سوم: شماره تلفن (منزلت)
-                    _StyledTextField(
-                      controller: textControllers[CardType.manzelat]!,
-                      label: 'شماره تلفن همراه را وارد کنید',
-                      icon: Icons.phone_outlined,
-                    ),
+                      // فیلد سوم: شماره تلفن (منزلت)
+                      _StyledTextField(
+                        controller: textControllers[CardType.manzelat]!,
+                        label: 'شماره تلفن همراه را وارد کنید',
+                        icon: Icons.phone_outlined,
+                      ),
+                    ] else ...[
+                      if (widget.customer.cards.contains(CardType.national)) ...[
+                        _StyledTextField(
+                          controller: textControllers[CardType.national]!,
+                          label: 'کد ملی را وارد کنید',
+                          icon: Icons.badge_outlined,
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      if (_phoneNumberCardType != null)
+                        _StyledTextField(
+                          controller: textControllers[_phoneNumberCardType]!,
+                          label: 'شماره تلفن همراه را وارد کنید',
+                          icon: Icons.phone_outlined,
+                        ),
+                    ],
                   ],
                 ),
               ),
@@ -644,6 +723,10 @@ Future<void> takePicture() async {
                     String manzelatText = textControllers[CardType.manzelat]!
                         .text
                         .trim();
+                    final phoneCard = _phoneNumberCardType;
+                    final phoneNumberText = phoneCard != null
+                        ? (textControllers[phoneCard]?.text.trim() ?? '')
+                        : '';
 
                     // ۲. فقط فیلدهای مربوط به مدارک انتخاب‌شده باید پر باشند.
                     // سریال کارت بلیت اگر از NFC آمده باشد از قبل پر شده است.
@@ -656,7 +739,8 @@ Future<void> takePicture() async {
 
                     if ((hasTicket && ticketText.isEmpty) ||
                         (hasNational && nationalText.isEmpty) ||
-                        (hasManzelat && manzelatText.isEmpty)) {
+                        (hasManzelat && manzelatText.isEmpty) ||
+                        (phoneCard != null && phoneNumberText.isEmpty)) {
                       _showStyledSnackBar(
                         'لطفاً نام فایل مدارک انتخاب‌شده را کامل کنید',
                         isError: true,
@@ -750,6 +834,7 @@ Future<void> takePicture() async {
                           final CardType type = cardData['type'];
                           final Uint8List bytes = cardData['bytes'];
                           String fileName = '';
+                          final phoneCard = _phoneNumberCardType;
 
                           if (type == CardType.ticket) {
                             // عکس اول: کارت بلیط -> نام فایل: سریال کارت بلیط
@@ -763,9 +848,23 @@ Future<void> takePicture() async {
                             // عکس دوم در حالت ۳: کارت منزلت -> نام فایل: شماره تلفن همراه
                             fileName = textControllers[CardType.manzelat]!.text
                                 .trim();
+                          } else if (phoneCard != null && type == phoneCard) {
+                            // مدرک مخصوص دسته جدید (جانبازی/شهدا/بهزیستی/دانشجویی)
+                            // که شماره تلفن مشتری رویش ثبت می‌شود.
+                            fileName =
+                                textControllers[phoneCard]!.text.trim();
+                          } else if (type == CardType.shenasnameh) {
+                            // شناسنامه (مخصوص جانبازان): نام فایل پیش‌فرض.
+                            fileName =
+                                '${widget.customer.fullName}_شناسنامه';
                           } else if (type == CardType.personalPhoto) {
-                            // منطق طلایی نام‌گذاری عکس پرسنلی:
-                            if (containsNational && !containsManzelat) {
+                            if (_isNewCategoryFlow) {
+                              // دسته‌های جدید مدارک ثابت خودشان را دارند،
+                              // پس عکس پرسنلی همیشه نام پیش‌فرض می‌گیرد.
+                              fileName =
+                                  '${widget.customer.fullName}_پرسنلی';
+                            } else if (containsNational && !containsManzelat) {
+                              // منطق طلایی نام‌گذاری عکس پرسنلی (فقط منزلت):
                               // دکمه ۲ (ملی ندارد): چون ملی گرفته شده، اسم پرسنلی می‌شود شماره تلفن
                               fileName = textControllers[CardType.manzelat]!
                                   .text
@@ -992,13 +1091,7 @@ Future<void> takePicture() async {
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Icon(
-                        currentCard == CardType.ticket
-                            ? Icons.credit_card_rounded
-                            : currentCard == CardType.national
-                                ? Icons.badge_rounded
-                                : currentCard == CardType.manzelat
-                                    ? Icons.card_membership_rounded
-                                    : Icons.person_rounded,
+                        getCardIcon(currentCard),
                         color: Colors.white,
                         size: 29,
                       ),

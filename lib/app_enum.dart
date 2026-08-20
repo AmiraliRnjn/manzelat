@@ -5,7 +5,9 @@ enum Mode {
   all,
   export,
   shohada,
-  daneshjo
+  daneshjo,
+  janbaz,
+  behzisti,
 }
 enum OperationType {
   charge,
