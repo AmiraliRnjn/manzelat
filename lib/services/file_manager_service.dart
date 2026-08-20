@@ -134,6 +134,43 @@ class FileManagerService {
     return cleaned.isEmpty ? 'نامشخص' : cleaned;
   }
 
+  /// آیا فایلی با این نام (صرف‌نظر از پسوند) از قبل داخل پوشه هست؟
+  static bool imageNameExists(Directory folder, String desiredName) {
+    final sanitized = _sanitize(desiredName);
+    if (!folder.existsSync()) return false;
+
+    return folder.listSync().whereType<File>().any((f) {
+      final fileName = f.path.split(Platform.pathSeparator).last;
+      final dotIndex = fileName.lastIndexOf('.');
+      final nameWithoutExt =
+          dotIndex == -1 ? fileName : fileName.substring(0, dotIndex);
+      return nameWithoutExt == sanitized;
+    });
+  }
+
+  /// یک عکس دستی‌انتخاب‌شده (از گالری یا دوربین) را با نام دلخواه کاربر
+  /// داخل پوشه‌ی مشتری کپی می‌کند. اگر فایل هم‌نامی وجود داشته باشد،
+  /// بازنویسی می‌شود (تأیید بازنویسی در لایه‌ی UI گرفته می‌شود).
+  static Future<File> addImageToFolder({
+    required Directory folder,
+    required File sourceImage,
+    required String desiredName,
+  }) async {
+    if (!await folder.exists()) {
+      await folder.create(recursive: true);
+    }
+
+    final sanitized = _sanitize(desiredName);
+    final originalName = sourceImage.path.split(Platform.pathSeparator).last;
+    final dotIndex = originalName.lastIndexOf('.');
+    final ext = dotIndex != -1 ? originalName.substring(dotIndex + 1) : 'jpg';
+
+    final targetPath =
+        [folder.path, '$sanitized.$ext'].join(Platform.pathSeparator);
+
+    return sourceImage.copy(targetPath);
+  }
+
   // --------------------------------------------------------------------
   // تنها متد جدید: ساخت ZIP از پوشه‌ی یک مشتری، دقیقاً کنار خودش
   // (لازم برای گزینه‌ی «زیپ کردن» در منوی پوشه‌های اصلی)

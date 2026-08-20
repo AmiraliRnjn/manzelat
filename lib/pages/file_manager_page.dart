@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:share_plus/share_plus.dart';
 import '../app_enum.dart';
@@ -597,12 +598,32 @@ class _FileManagerPageState extends State<FileManagerPage> {
 }
 
 /// صفحه‌ی ساده‌ی داخل‌اپی برای مرور فایل‌های یک پوشه‌ی مشتری.
-class _FolderContentsPage extends StatelessWidget {
+class _FolderContentsPage extends StatefulWidget {
   final Directory folder;
 
   const _FolderContentsPage({required this.folder});
 
+  @override
+  State<_FolderContentsPage> createState() => _FolderContentsPageState();
+}
+
+class _FolderContentsPageState extends State<_FolderContentsPage> {
   static const _imageExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.heic'];
+
+  List<File> _files = [];
+  bool _isAdding = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFiles();
+  }
+
+  void _loadFiles() {
+    setState(() {
+      _files = FileManagerService.getFilesInFolder(widget.folder);
+    });
+  }
 
   bool _isImage(File file) {
     final path = file.path.toLowerCase();
@@ -629,20 +650,139 @@ class _FolderContentsPage extends StatelessWidget {
     }
   }
 
+  Future<ImageSource?> _pickImageSource() {
+    return showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined),
+                title: const Text('انتخاب از گالری'),
+                onTap: () => Navigator.pop(sheetContext, ImageSource.gallery),
+              ),
+              ListTile(
+                leading: const Icon(Icons.camera_alt_outlined),
+                title: const Text('گرفتن عکس با دوربین'),
+                onTap: () => Navigator.pop(sheetContext, ImageSource.camera),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<String?> _askForFileName() {
+    final controller = TextEditingController();
+
+    return showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('نام عکس'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            textDirection: TextDirection.rtl,
+            decoration: const InputDecoration(
+              hintText: 'مثلاً: عکس اضافی',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('انصراف'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(dialogContext, controller.text),
+              child: const Text('ذخیره'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<bool?> _confirmOverwrite(String name) {
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('بازنویسی فایل'),
+          content: Text('فایلی با نام «$name» از قبل در این پوشه وجود دارد. بازنویسی شود؟'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('انصراف'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('بازنویسی'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _addPhoto() async {
+    final source = await _pickImageSource();
+    if (source == null || _isAdding) return;
+
+    final picker = ImagePicker();
+    final XFile? picked = await picker.pickImage(source: source, imageQuality: 90);
+    if (picked == null) return;
+
+    final name = await _askForFileName();
+    if (name == null || name.trim().isEmpty) return;
+    final trimmedName = name.trim();
+
+    if (FileManagerService.imageNameExists(widget.folder, trimmedName)) {
+      final confirmed = await _confirmOverwrite(trimmedName);
+      if (confirmed != true) return;
+    }
+
+    setState(() => _isAdding = true);
+
+    try {
+      await FileManagerService.addImageToFolder(
+        folder: widget.folder,
+        sourceImage: File(picked.path),
+        desiredName: trimmedName,
+      );
+
+      _loadFiles();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('عکس با موفقیت اضافه شد.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('خطا در افزودن عکس: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isAdding = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final files = FileManagerService.getFilesInFolder(folder);
-
     return Scaffold(
       appBar: AppBar(
-        title: Text(FileManagerService.displayName(folder)),
+        title: Text(FileManagerService.displayName(widget.folder)),
       ),
-      body: files.isEmpty
+      body: _files.isEmpty
           ? const Center(child: Text('این پوشه هنوز فایلی ندارد.'))
           : ListView.builder(
-              itemCount: files.length,
+              itemCount: _files.length,
               itemBuilder: (context, index) {
-                final file = files[index];
+                final file = _files[index];
                 final sizeKb = (file.lengthSync() / 1024).toStringAsFixed(1);
                 final isReceipt = _isReceipt(file);
 
@@ -660,6 +800,17 @@ class _FolderContentsPage extends StatelessWidget {
                 );
               },
             ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _isAdding ? null : _addPhoto,
+        icon: _isAdding
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              )
+            : const Icon(Icons.add_a_photo_rounded),
+        label: const Text('افزودن عکس'),
+      ),
     );
   }
 }
