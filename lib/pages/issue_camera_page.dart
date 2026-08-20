@@ -12,6 +12,7 @@ import 'package:share_plus/share_plus.dart';
 import '../app_enum.dart';
 import '../models/customer_data.dart';
 import '../services/storage_service.dart';
+import '../services/customer_status_service.dart';
 
 class _StyledDialog extends StatelessWidget {
   final IconData icon;
@@ -532,6 +533,15 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
                 [XFile(zipFile.path)],
                 text: 'فایل زیپ مدارک مشتری: ${widget.customer.fullName}',
               );
+
+              // بعد از اشتراک‌گذاری، یادآور این مشتری زرد (منتظر رسید)
+              // می‌شود و خودِ دیالوگ هم بسته می‌شود، دقیقاً مثل «بعداً».
+              await CustomerStatusService.markSent(zipFile.path);
+
+              if (context.mounted) {
+                Navigator.pop(context);
+                Navigator.popUntil(context, (route) => route.isFirst);
+              }
             },
           ),
         ],
@@ -1229,4 +1239,3 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
     super.dispose();
   }
 }
-

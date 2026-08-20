@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 
 import '../services/storage_service.dart';
+import '../services/customer_status_service.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import '../app_enum.dart';
@@ -598,6 +599,15 @@ Future<void> takePicture() async {
                   [xFile],
                   text: 'فایل زیپ مدارک مشتری: ${widget.customer.fullName}',
                 );
+
+                // بعد از اشتراک‌گذاری، یادآور این مشتری زرد (منتظر رسید)
+                // می‌شود و خودِ دیالوگ هم بسته می‌شود، دقیقاً مثل «بعداً».
+                await CustomerStatusService.markSent(zipFile.path);
+
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  Navigator.popUntil(context, (route) => route.isFirst);
+                }
               },
             ),
           ],
@@ -1427,4 +1437,3 @@ Future<void> takePicture() async {
     super.dispose();
   }
 }
-
