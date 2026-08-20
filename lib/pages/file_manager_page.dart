@@ -738,7 +738,16 @@ class _FolderContentsPageState extends State<_FolderContentsPage> {
     if (source == null || _isAdding) return;
 
     final picker = ImagePicker();
-    final XFile? picked = await picker.pickImage(source: source, imageQuality: 90);
+    final XFile? picked = await picker.pickImage(
+      source: source,
+      imageQuality: 90,
+      // با همون سقف ابعادی محدودش می‌کنیم که دوربین اصلی مدارک داره
+      // (ResolutionPreset.high ≈ ۱۲۸۰ پیکسل)، وگرنه عکس گالری با ابعاد
+      // اصلی (مثلاً ۱۲+ مگاپیکسل) میاد که هم حجم برش‌خورده رو چند برابر
+      // می‌کنه و هم پردازش برش رو کند می‌کنه.
+      maxWidth: 1280,
+      maxHeight: 1280,
+    );
     if (picked == null) return;
 
     if (!mounted) return;
