@@ -95,6 +95,7 @@ class _CustomerInfoPageState extends State<CustomerInfoPage> {
           CardType.veteranCard,
           CardType.national,
           CardType.shenasnameh,
+          CardType.shenasnamehPage2,
           CardType.personalPhoto,
         ];
         break;

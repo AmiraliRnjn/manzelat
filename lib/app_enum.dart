@@ -21,6 +21,7 @@ enum CardType {
   studentcard,
   veteranCard,
   shenasnameh,
+  shenasnamehPage2,
   martyrCard,
   behzistiCard,
 }

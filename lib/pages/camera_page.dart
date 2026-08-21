@@ -303,6 +303,7 @@ bool isTakingPicture = false;
   static const List<CardType> _newCategoryCardTypes = [
     CardType.veteranCard,
     CardType.shenasnameh,
+    CardType.shenasnamehPage2,
     CardType.martyrCard,
     CardType.behzistiCard,
     CardType.studentcard,
@@ -378,7 +379,9 @@ bool isTakingPicture = false;
       case CardType.veteranCard:
         return 'کارت جانبازی استان تهران';
       case CardType.shenasnameh:
-        return 'شناسنامه (صفحه دوم یا سوم)';
+        return 'اصل شناسنامه';
+      case CardType.shenasnamehPage2:
+        return 'عکس صفحه دوم شناسنامه';
       case CardType.martyrCard:
         return 'کارت بنیاد شهید استان تهران';
       case CardType.behzistiCard:
@@ -402,6 +405,8 @@ bool isTakingPicture = false;
         return 'عکس پرسنلی';
       case CardType.shenasnameh:
         return 'شناسنامه';
+      case CardType.shenasnamehPage2:
+        return 'شناسنامه صفحه دوم';
     }
   }
 
@@ -419,6 +424,8 @@ bool isTakingPicture = false;
         return Icons.shield_rounded;
       case CardType.shenasnameh:
         return Icons.menu_book_rounded;
+      case CardType.shenasnamehPage2:
+        return Icons.description_rounded;
       case CardType.martyrCard:
         return Icons.local_florist_rounded;
       case CardType.behzistiCard:
@@ -867,6 +874,10 @@ Future<void> takePicture() async {
                             // شناسنامه (مخصوص جانبازان): نام فایل پیش‌فرض.
                             fileName =
                                 '${widget.customer.fullName}_شناسنامه';
+                          } else if (type == CardType.shenasnamehPage2) {
+                            // صفحه دوم شناسنامه: نام فایل پیش‌فرض جدا از خودِ شناسنامه.
+                            fileName =
+                                '${widget.customer.fullName}_شناسنامه_صفحه_دوم';
                           } else if (type == CardType.personalPhoto) {
                             if (_isNewCategoryFlow) {
                               // دسته‌های جدید مدارک ثابت خودشان را دارند،
@@ -1437,3 +1448,4 @@ Future<void> takePicture() async {
     super.dispose();
   }
 }
+

@@ -342,7 +342,9 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
       case CardType.veteranCard:
         return 'کارت جانبازی استان تهران';
       case CardType.shenasnameh:
-        return 'اصل شناسنامه (صفحه دوم یا سوم)';
+        return 'اصل شناسنامه';
+      case CardType.shenasnamehPage2:
+        return 'عکس صفحه دوم شناسنامه';
       case CardType.martyrCard:
         return 'کارت بنیاد شهید استان تهران';
       case CardType.behzistiCard:
@@ -366,6 +368,8 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
         return Icons.shield_rounded;
       case CardType.shenasnameh:
         return Icons.menu_book_rounded;
+      case CardType.shenasnamehPage2:
+        return Icons.description_rounded;
       case CardType.martyrCard:
         return Icons.local_florist_rounded;
       case CardType.behzistiCard:
@@ -570,6 +574,8 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
         return '${widget.customer.fullName}_پرسنلی';
       case CardType.shenasnameh:
         return '${widget.customer.fullName}_شناسنامه';
+      case CardType.shenasnamehPage2:
+        return '${widget.customer.fullName}_شناسنامه_صفحه_دوم';
       case CardType.ticket:
         throw StateError('Ticket is not allowed in issue flow.');
     }
@@ -1239,3 +1245,4 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
     super.dispose();
   }
 }
+

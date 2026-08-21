@@ -32,6 +32,7 @@ class _IssueCustomerInfoPageState extends State<IssueCustomerInfoPage> {
           CardType.veteranCard,
           CardType.national,
           CardType.shenasnameh,
+          CardType.shenasnamehPage2,
           CardType.personalPhoto,
         ];
       case 'شهدا':
@@ -339,7 +340,9 @@ class _IssueCustomerInfoPageState extends State<IssueCustomerInfoPage> {
       case CardType.veteranCard:
         return 'کارت جانبازی استان تهران';
       case CardType.shenasnameh:
-        return 'اصل شناسنامه (صفحه دوم یا سوم)';
+        return 'اصل شناسنامه';
+      case CardType.shenasnamehPage2:
+        return 'عکس صفحه دوم شناسنامه';
       case CardType.martyrCard:
         return 'کارت بنیاد شهید استان تهران';
       case CardType.behzistiCard:
