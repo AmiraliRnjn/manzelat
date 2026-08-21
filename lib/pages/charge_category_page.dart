@@ -115,7 +115,7 @@ class ChargeCategoryPage extends StatelessWidget {
                   _CategoryCard(
                     title: 'بهزیستی',
                     subtitle: 'شارژ کارت بهزیستی',
-                    icon: Icons.accessible_rounded,
+                    icon: Icons.child_care,
                     color: const Color(0xFF35B96B),
                     onTap: () => _onCategorySelected(context, 'بهزیستی'),
                   ),

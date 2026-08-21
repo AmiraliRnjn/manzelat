@@ -101,7 +101,7 @@ class IssueCategoryPage extends StatelessWidget {
                   _CategoryCard(
                     title: 'بهزیستی',
                     subtitle: 'صدور کارت بهزیستی',
-                    icon: Icons.accessible_rounded,
+                    icon: Icons.child_care,
                     color: const Color(0xFF35B96B),
                     onTap: () => _openCustomerInfo(context, 'بهزیستی'),
                   ),

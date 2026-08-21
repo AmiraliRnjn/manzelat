@@ -23,6 +23,13 @@ class FileManagerPage extends StatefulWidget {
 }
 
 class _FileManagerPageState extends State<FileManagerPage> {
+  static const Color _primaryBlue = Color(0xFF1565C0);
+  static const Color _purple = Color.fromARGB(255, 128, 68, 232);
+  static const Color _green = Color.fromARGB(255, 59, 211, 122);
+  static const Color _pageBackground = Color(0xFFFAFBFF);
+  static const Color _darkText = Color(0xFF172554);
+  static const Color _secondaryText = Color(0xFF707789);
+
   List<Directory> customerFolders = [];
   List<File> zipFiles = [];
   Set<String> sentKeys = {};
@@ -332,22 +339,73 @@ class _FileManagerPageState extends State<FileManagerPage> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: Text(title),
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          title: Text(
+            title,
+            textDirection: TextDirection.rtl,
+            style: const TextStyle(
+              fontFamily: 'Traffic',
+              color: _darkText,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           content: TextField(
             controller: controller,
             autofocus: true,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
+            textDirection: TextDirection.rtl,
+            style: const TextStyle(fontFamily: 'Traffic'),
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: const Color(0xFFF7F8FB),
+              hintText: 'نام جدید',
+              hintStyle: const TextStyle(
+                fontFamily: 'Traffic',
+                color: Color(0xFF9AA0AD),
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: const BorderSide(color: Color(0xFFE3E6EC)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: const BorderSide(color: Color(0xFFE3E6EC)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: const BorderSide(
+                  color: _primaryBlue,
+                  width: 1.5,
+                ),
+              ),
             ),
           ),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('انصراف'),
+              child: const Text(
+                'انصراف',
+                style: TextStyle(fontFamily: 'Traffic'),
+              ),
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(dialogContext, controller.text),
-              child: const Text('تایید'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _primaryBlue,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              child: const Text(
+                'تایید',
+                style: TextStyle(fontFamily: 'Traffic'),
+              ),
             ),
           ],
         );
@@ -365,19 +423,47 @@ class _FileManagerPageState extends State<FileManagerPage> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: Text(title),
-          content: Text(message),
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          title: Text(
+            title,
+            textDirection: TextDirection.rtl,
+            style: const TextStyle(
+              fontFamily: 'Traffic',
+              color: _darkText,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            message,
+            textDirection: TextDirection.rtl,
+            style: const TextStyle(
+              fontFamily: 'Traffic',
+              color: _secondaryText,
+              fontSize: 14,
+            ),
+          ),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('انصراف'),
+              child: const Text(
+                'انصراف',
+                style: TextStyle(fontFamily: 'Traffic'),
+              ),
             ),
             TextButton(
               style: TextButton.styleFrom(
-                foregroundColor: danger ? Colors.red : null,
+                foregroundColor: danger ? const Color(0xFFE84C4C) : _primaryBlue,
               ),
               onPressed: () => Navigator.pop(dialogContext, true),
-              child: Text(confirmLabel),
+              child: Text(
+                confirmLabel,
+                style: const TextStyle(fontFamily: 'Traffic'),
+              ),
             ),
           ],
         );
@@ -391,70 +477,211 @@ class _FileManagerPageState extends State<FileManagerPage> {
         ? 'شارژ این تاریخ'
         : 'صدور این تاریخ';
 
+    final subtitle = widget.operationType == OperationType.charge
+        ? 'مدیریت فایل‌های شارژ'
+        : 'مدیریت فایل‌های صدور';
+
     final folderDot = _tabDotColor(customerFolders);
     final zipDot = _tabDotColor(zipFiles);
 
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(title),
-          bottom: TabBar(
-            tabs: [
-              Tab(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('فایل اصلی'),
-                    if (folderDot != null) ...[
-                      const SizedBox(width: 6),
-                      _dot(folderDot, size: 8),
-                    ],
-                  ],
-                ),
-              ),
-              Tab(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('ZIP'),
-                    if (zipDot != null) ...[
-                      const SizedBox(width: 6),
-                      _dot(zipDot, size: 8),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          textTheme: Theme.of(context).textTheme.apply(fontFamily: 'Traffic'),
         ),
-        body: isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : Column(
+        child: DefaultTabController(
+          length: 2,
+          child: Scaffold(
+            backgroundColor: _pageBackground,
+            body: SafeArea(
+              bottom: false,
+              child: Column(
                 children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(22, 22, 22, 24),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topRight,
+                        end: Alignment.bottomLeft,
+                        colors: [
+                          Color(0xFF0D47C9),
+                          Color(0xFF1976E8),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(34),
+                        bottomRight: Radius.circular(34),
+                      ),
+                    ),
+                    child: Row(
+                      textDirection: TextDirection.rtl,
+                      children: [
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(
+                            Icons.arrow_back_rounded,
+                            color: Colors.white,
+                            size: 30,
+                          ),
+                          tooltip: 'بازگشت',
+                        ),
+                        const SizedBox(width: 10,),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 4),
+                              Text(
+                                title,
+                                textDirection: TextDirection.rtl,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontFamily: 'Traffic',
+                                  fontSize: 30,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                subtitle,
+                                textDirection: TextDirection.rtl,
+                                style: const TextStyle(
+                                  color: Color(0xFFE4EEFF),
+                                  fontFamily: 'Traffic',
+                                  fontSize: 17,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Transform.translate(
+                    offset: const Offset(0, -8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Material(
+                        color: Colors.white,
+                        elevation: 4,
+                        shadowColor: Colors.black12,
+                        borderRadius: BorderRadius.circular(20),
+                        child: TabBar(
+                          labelColor: _primaryBlue,
+                          unselectedLabelColor: _secondaryText,
+                          indicatorColor: _primaryBlue,
+                          indicatorSize: TabBarIndicatorSize.label,
+                          indicatorWeight: 3,
+                          dividerColor: Colors.transparent,
+                          labelStyle: const TextStyle(
+                            fontFamily: 'Traffic',
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          unselectedLabelStyle: const TextStyle(
+                            fontFamily: 'Traffic',
+                            fontSize: 15,
+                          ),
+                          tabs: [
+                            Tab(
+                              height: 52,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text('فایل اصلی'),
+                                  if (folderDot != null) ...[
+                                    const SizedBox(width: 7),
+                                    _dot(folderDot, size: 8),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            Tab(
+                              height: 52,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text('ZIP'),
+                                  if (zipDot != null) ...[
+                                    const SizedBox(width: 7),
+                                    _dot(zipDot, size: 8),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
                     child: TextField(
                       controller: _searchController,
                       textDirection: TextDirection.rtl,
-                      decoration: const InputDecoration(
+                      style: const TextStyle(
+                        fontFamily: 'Traffic',
+                        color: _darkText,
+                      ),
+                      decoration: InputDecoration(
                         hintText: 'جستجوی نام مشتری...',
-                        prefixIcon: Icon(Icons.search),
-                        border: OutlineInputBorder(),
-                        isDense: true,
+                        hintStyle: const TextStyle(
+                          fontFamily: 'Traffic',
+                          color: Color(0xFF9AA0AD),
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.search_rounded,
+                          color: _primaryBlue,
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(17),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFE3E6EC),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(17),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFE3E6EC),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(17),
+                          borderSide: const BorderSide(
+                            color: _primaryBlue,
+                            width: 1.5,
+                          ),
+                        ),
                       ),
                     ),
                   ),
                   Expanded(
-                    child: TabBarView(
-                      children: [
-                        _buildCustomerFoldersList(),
-                        _buildZipFilesList(),
-                      ],
-                    ),
+                    child: isLoading
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                              color: _primaryBlue,
+                            ),
+                          )
+                        : TabBarView(
+                            children: [
+                              _buildCustomerFoldersList(),
+                              _buildZipFilesList(),
+                            ],
+                          ),
                   ),
                 ],
               ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -489,29 +716,48 @@ class _FileManagerPageState extends State<FileManagerPage> {
     final filtered = _filteredFolders;
 
     if (customerFolders.isEmpty) {
-      return const Center(child: Text('هنوز مشتری‌ای برای این تاریخ ثبت نشده'));
+      return _buildEmptyState(
+        icon: Icons.folder_off_rounded,
+        title: 'هنوز مشتری‌ای برای این تاریخ ثبت نشده',
+      );
     }
 
     if (filtered.isEmpty) {
-      return const Center(child: Text('مشتری‌ای پیدا نشد.'));
+      return _buildEmptyState(
+        icon: Icons.search_off_rounded,
+        title: 'مشتری‌ای پیدا نشد.',
+      );
     }
 
     return RefreshIndicator(
+      color: _primaryBlue,
       onRefresh: _loadData,
       child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(20, 2, 20, 24),
         itemCount: filtered.length,
         itemBuilder: (context, index) {
           final folder = filtered[index];
           final fileCount = folder.listSync().whereType<File>().length;
           final status = _statusFor(folder);
 
-          return ListTile(
-            leading: _leadingWithDot(Icons.folder, Colors.amber, status),
-            title: Text(FileManagerService.displayName(folder)),
-            subtitle: Text('$fileCount فایل'),
+          return _buildEntityCard(
+            marginBottom: 10,
+            leading: _leadingWithDot(
+              Icons.folder_rounded,
+              _purple,
+              status,
+            ),
+            title: FileManagerService.displayName(folder),
+            subtitle: '$fileCount فایل',
             onTap: () => _openFolder(folder),
-            trailing: PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert),
+            menu: PopupMenuButton<String>(
+              icon: const Icon(
+                Icons.more_vert_rounded,
+                color: Color(0xFF6B7280),
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               onSelected: (value) {
                 switch (value) {
                   case 'open':
@@ -532,13 +778,28 @@ class _FileManagerPageState extends State<FileManagerPage> {
                 }
               },
               itemBuilder: (context) => const [
-                PopupMenuItem(value: 'open', child: Text('باز کردن')),
-                PopupMenuItem(value: 'rename', child: Text('تغییر نام')),
-                PopupMenuItem(value: 'zip', child: Text('زیپ کردن')),
-                PopupMenuItem(value: 'share', child: Text('اشتراک‌گذاری')),
+                PopupMenuItem(
+                  value: 'open',
+                  child: Text('باز کردن'),
+                ),
+                PopupMenuItem(
+                  value: 'rename',
+                  child: Text('تغییر نام'),
+                ),
+                PopupMenuItem(
+                  value: 'zip',
+                  child: Text('زیپ کردن'),
+                ),
+                PopupMenuItem(
+                  value: 'share',
+                  child: Text('اشتراک‌گذاری'),
+                ),
                 PopupMenuItem(
                   value: 'delete',
-                  child: Text('حذف', style: TextStyle(color: Colors.red)),
+                  child: Text(
+                    'حذف',
+                    style: TextStyle(color: Color(0xFFE84C4C)),
+                  ),
                 ),
               ],
             ),
@@ -548,30 +809,163 @@ class _FileManagerPageState extends State<FileManagerPage> {
     );
   }
 
+  Widget _buildEmptyState({
+    required IconData icon,
+    required String title,
+  }) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF2F6FF),
+                borderRadius: BorderRadius.circular(22),
+              ),
+              child: Icon(
+                icon,
+                color: _primaryBlue,
+                size: 34,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: _darkText,
+                fontFamily: 'Traffic',
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEntityCard({
+    required Widget leading,
+    required String title,
+    required String subtitle,
+    VoidCallback? onTap,
+    required Widget menu,
+    double marginBottom = 10,
+  }) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: marginBottom),
+      child: Material(
+        color: Colors.white,
+        elevation: 1,
+        shadowColor: Colors.black12,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 11, 8, 11),
+            child: Row(
+              textDirection: TextDirection.rtl,
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF2F6FF),
+                    borderRadius: BorderRadius.circular(17),
+                  ),
+                  alignment: Alignment.center,
+                  child: leading,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    textDirection: TextDirection.rtl,
+                    children: [
+                      Text(
+                        title,
+                        textDirection: TextDirection.rtl,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: _darkText,
+                          fontFamily: 'Traffic',
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        subtitle,
+                        textDirection: TextDirection.rtl,
+                        style: const TextStyle(
+                          color: _secondaryText,
+                          fontFamily: 'Traffic',
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                menu,
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildZipFilesList() {
     final filtered = _filteredZips;
 
     if (zipFiles.isEmpty) {
-      return const Center(child: Text('هنوز فایل ZIP‌ای برای این تاریخ ساخته نشده'));
+      return _buildEmptyState(
+        icon: Icons.folder_zip_rounded,
+        title: 'هنوز فایل ZIP‌ای برای این تاریخ ساخته نشده',
+      );
     }
 
     if (filtered.isEmpty) {
-      return const Center(child: Text('مشتری‌ای پیدا نشد.'));
+      return _buildEmptyState(
+        icon: Icons.search_off_rounded,
+        title: 'فایلی پیدا نشد.',
+      );
     }
 
     return RefreshIndicator(
+      color: _primaryBlue,
       onRefresh: _loadData,
       child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(20, 2, 20, 24),
         itemCount: filtered.length,
         itemBuilder: (context, index) {
           final zip = filtered[index];
           final status = _statusFor(zip);
 
-          return ListTile(
-            leading: _leadingWithDot(Icons.folder_zip, Colors.deepOrange, status),
-            title: Text(FileManagerService.displayName(zip)),
-            trailing: PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert),
+          return _buildEntityCard(
+            leading: _leadingWithDot(
+              Icons.folder_zip_rounded,
+              const Color(0xFFF07A3A),
+              status,
+            ),
+            title: FileManagerService.displayName(zip),
+            subtitle: 'فایل فشرده ZIP',
+            onTap: null,
+            menu: PopupMenuButton<String>(
+              icon: const Icon(
+                Icons.more_vert_rounded,
+                color: Color(0xFF6B7280),
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               onSelected: (value) {
                 switch (value) {
                   case 'rename':
@@ -586,11 +980,20 @@ class _FileManagerPageState extends State<FileManagerPage> {
                 }
               },
               itemBuilder: (context) => const [
-                PopupMenuItem(value: 'rename', child: Text('تغییر نام')),
-                PopupMenuItem(value: 'share', child: Text('اشتراک‌گذاری')),
+                PopupMenuItem(
+                  value: 'rename',
+                  child: Text('تغییر نام'),
+                ),
+                PopupMenuItem(
+                  value: 'share',
+                  child: Text('اشتراک‌گذاری'),
+                ),
                 PopupMenuItem(
                   value: 'delete',
-                  child: Text('حذف', style: TextStyle(color: Colors.red)),
+                  child: Text(
+                    'حذف',
+                    style: TextStyle(color: Color(0xFFE84C4C)),
+                  ),
                 ),
               ],
             ),
@@ -600,6 +1003,7 @@ class _FileManagerPageState extends State<FileManagerPage> {
     );
   }
 }
+
 
 /// صفحه‌ی ساده‌ی داخل‌اپی برای مرور فایل‌های یک پوشه‌ی مشتری.
 class _FolderContentsPage extends StatefulWidget {
@@ -659,20 +1063,72 @@ class _FolderContentsPageState extends State<_FolderContentsPage> {
       context: context,
       builder: (sheetContext) {
         return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.photo_library_outlined),
-                title: const Text('انتخاب از گالری'),
-                onTap: () => Navigator.pop(sheetContext, ImageSource.gallery),
-              ),
-              ListTile(
-                leading: const Icon(Icons.camera_alt_outlined),
-                title: const Text('گرفتن عکس با دوربین'),
-                onTap: () => Navigator.pop(sheetContext, ImageSource.camera),
-              ),
-            ],
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 42,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD5D9E2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ListTile(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  leading: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF2F6FF),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(
+                      Icons.photo_library_outlined,
+                      color: _FileManagerPageState._primaryBlue,
+                    ),
+                  ),
+                  title: const Text(
+                    'انتخاب از گالری',
+                    style: TextStyle(
+                      fontFamily: 'Traffic',
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  onTap: () => Navigator.pop(sheetContext, ImageSource.gallery),
+                ),
+                ListTile(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  leading: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE9F8F0),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(
+                      Icons.camera_alt_outlined,
+                      color: Color(0xFF22B965),
+                    ),
+                  ),
+                  title: const Text(
+                    'گرفتن عکس با دوربین',
+                    style: TextStyle(
+                      fontFamily: 'Traffic',
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  onTap: () => Navigator.pop(sheetContext, ImageSource.camera),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -686,14 +1142,47 @@ class _FolderContentsPageState extends State<_FolderContentsPage> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('نام عکس'),
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          title: const Text(
+            'نام عکس',
+            style: TextStyle(
+              fontFamily: 'Traffic',
+              color: _FileManagerPageState._darkText,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           content: TextField(
             controller: controller,
             autofocus: true,
             textDirection: TextDirection.rtl,
-            decoration: const InputDecoration(
+            style: const TextStyle(
+              fontFamily: 'Traffic',
+              color: _FileManagerPageState._darkText,
+            ),
+            decoration: InputDecoration(
               hintText: 'مثلاً: عکس اضافی',
-              border: OutlineInputBorder(),
+              hintStyle: const TextStyle(fontFamily: 'Traffic'),
+              filled: true,
+              fillColor: const Color(0xFFF7F8FB),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: const BorderSide(color: Color(0xFFE3E6EC)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: const BorderSide(color: Color(0xFFE3E6EC)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: const BorderSide(
+                  color: _FileManagerPageState._primaryBlue,
+                  width: 1.5,
+                ),
+              ),
             ),
           ),
           actions: [
@@ -703,7 +1192,18 @@ class _FolderContentsPageState extends State<_FolderContentsPage> {
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(dialogContext, controller.text),
-              child: const Text('ذخیره'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _FileManagerPageState._primaryBlue,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              child: const Text(
+                'ذخیره',
+                style: TextStyle(fontFamily: 'Traffic'),
+              ),
             ),
           ],
         );
@@ -716,8 +1216,27 @@ class _FolderContentsPageState extends State<_FolderContentsPage> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('بازنویسی فایل'),
-          content: Text('فایلی با نام «$name» از قبل در این پوشه وجود دارد. بازنویسی شود؟'),
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          title: const Text(
+            'بازنویسی فایل',
+            style: TextStyle(
+              fontFamily: 'Traffic',
+              color: _FileManagerPageState._darkText,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            'فایلی با نام «$name» از قبل در این پوشه وجود دارد. بازنویسی شود؟',
+            style: const TextStyle(
+              fontFamily: 'Traffic',
+              color: _FileManagerPageState._secondaryText,
+              fontSize: 14,
+            ),
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
@@ -725,7 +1244,18 @@ class _FolderContentsPageState extends State<_FolderContentsPage> {
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('بازنویسی'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _FileManagerPageState._primaryBlue,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              child: const Text(
+                'بازنویسی',
+                style: TextStyle(fontFamily: 'Traffic'),
+              ),
             ),
           ],
         );
@@ -797,43 +1327,227 @@ class _FolderContentsPageState extends State<_FolderContentsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(FileManagerService.displayName(widget.folder)),
-      ),
-      body: _files.isEmpty
-          ? const Center(child: Text('این پوشه هنوز فایلی ندارد.'))
-          : ListView.builder(
-              itemCount: _files.length,
-              itemBuilder: (context, index) {
-                final file = _files[index];
-                final sizeKb = (file.lengthSync() / 1024).toStringAsFixed(1);
-                final isReceipt = _isReceipt(file);
-
-                return ListTile(
-                  leading: Icon(
-                    isReceipt
-                        ? Icons.receipt_long
-                        : (_isImage(file) ? Icons.image : Icons.insert_drive_file),
-                    color: isReceipt ? Colors.green : Colors.blueGrey,
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          textTheme: Theme.of(context).textTheme.apply(fontFamily: 'Traffic'),
+        ),
+        child: Scaffold(
+          backgroundColor: _FileManagerPageState._pageBackground,
+          body: SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(22, 22, 22, 24),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                      colors: [
+                        Color(0xFF0D47C9),
+                        Color(0xFF1976E8),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(34),
+                      bottomRight: Radius.circular(34),
+                    ),
                   ),
-                  title: Text(FileManagerService.displayName(file)),
-                  subtitle: Text('$sizeKb KB'),
-                  trailing: const Icon(Icons.open_in_new, size: 18, color: Colors.grey),
-                  onTap: () => _openFile(context, file),
-                );
-              },
+                  child: Row(
+                    children: [
+                      Container(
+                        child: IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(
+                        Icons.arrow_back_rounded,
+                        color: Colors.white,
+                        size: 30,
+                      ),
+                    ),
+                      ),
+                      Container(
+                        width: 54,
+                        height: 54,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.14),
+                          borderRadius: BorderRadius.circular(17),
+                        ),
+                        child: const Icon(
+                          Icons.folder_rounded,
+                          color: Colors.white,
+                          size: 30,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              FileManagerService.displayName(widget.folder),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontFamily: 'Traffic',
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            const Text(
+                              'فایل‌ های ذخیره شده',
+                              style: TextStyle(
+                                color: Color(0xFFE4EEFF),
+                                fontFamily: 'Traffic',
+                                fontSize: 15,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: _files.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'این پوشه هنوز فایلی ندارد.',
+                            style: TextStyle(
+                              color: _FileManagerPageState._darkText,
+                              fontFamily: 'Traffic',
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(20, 18, 20, 110),
+                          itemCount: _files.length,
+                          itemBuilder: (context, index) {
+                            final file = _files[index];
+                            final sizeKb =
+                                (file.lengthSync() / 1024).toStringAsFixed(1);
+                            final isReceipt = _isReceipt(file);
+                            final iconColor = isReceipt
+                                ? const Color(0xFF22B965)
+                                : const Color(0xFF607D8B);
+                            final icon = isReceipt
+                                ? Icons.receipt_long_rounded
+                                : (_isImage(file)
+                                    ? Icons.image_rounded
+                                    : Icons.insert_drive_file_rounded);
+
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: Material(
+                                color: Colors.white,
+                                elevation: 1,
+                                shadowColor: Colors.black12,
+                                borderRadius: BorderRadius.circular(20),
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(20),
+                                  onTap: () => _openFile(context, file),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 11,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          width: 54,
+                                          height: 54,
+                                          decoration: BoxDecoration(
+                                            color: iconColor.withOpacity(0.10),
+                                            borderRadius:
+                                                BorderRadius.circular(17),
+                                          ),
+                                          child: Icon(
+                                            icon,
+                                            color: iconColor,
+                                            size: 28,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                FileManagerService.displayName(
+                                                  file,
+                                                ),
+                                                maxLines: 1,
+                                                overflow:
+                                                    TextOverflow.ellipsis,
+                                                style: const TextStyle(
+                                                  color:
+                                                      _FileManagerPageState._darkText,
+                                                  fontFamily: 'Traffic',
+                                                  fontSize: 17,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 5),
+                                              Text(
+                                                '$sizeKb KB',
+                                                style: const TextStyle(
+                                                  color:
+                                                      _FileManagerPageState._secondaryText,
+                                                  fontFamily: 'Traffic',
+                                                  fontSize: 13,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const Icon(
+                                          Icons.open_in_new_rounded,
+                                          size: 20,
+                                          color: Color(0xFF9AA0AD),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
             ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _isAdding ? null : _addPhoto,
-        icon: _isAdding
-            ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-              )
-            : const Icon(Icons.add_a_photo_rounded),
-        label: const Text('افزودن عکس'),
+          ),
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: _isAdding ? null : _addPhoto,
+            backgroundColor: _FileManagerPageState._primaryBlue,
+            foregroundColor: Colors.white,
+            elevation: 4,
+            icon: _isAdding
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.add_a_photo_rounded),
+            label: const Text(
+              'افزودن عکس',
+              style: TextStyle(
+                fontFamily: 'Traffic',
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -898,7 +1612,13 @@ class _ImageCropPageState extends State<_ImageCropPage> {
           backgroundColor: Colors.black,
           foregroundColor: Colors.white,
           elevation: 0,
-          title: const Text('برش عکس'),
+          title: const Text(
+            'برش عکس',
+            style: TextStyle(
+              fontFamily: 'Traffic',
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ),
         body: SafeArea(
           child: Column(
@@ -926,7 +1646,10 @@ class _ImageCropPageState extends State<_ImageCropPage> {
                           icon: const Icon(Icons.close_rounded),
                           label: const Text(
                             'انصراف',
-                            style: TextStyle(fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              fontFamily: 'Traffic',
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.white,
@@ -956,7 +1679,10 @@ class _ImageCropPageState extends State<_ImageCropPage> {
                               : const Icon(Icons.check_rounded),
                           label: const Text(
                             'تأیید برش',
-                            style: TextStyle(fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              fontFamily: 'Traffic',
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF35B96B),
