@@ -152,9 +152,9 @@ class _FileManagerPageState extends State<FileManagerPage> {
       await _loadData();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('خطا در تغییر نام: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('خطا در تغییر نام: $e')));
     }
   }
 
@@ -168,7 +168,8 @@ class _FileManagerPageState extends State<FileManagerPage> {
     if (await existingZip.exists()) {
       final confirmed = await _confirmAction(
         title: 'بازنویسی ZIP',
-        message: 'فایل ZIP «$name» از قبل وجود دارد. با نسخه‌ی جدید جایگزین شود؟',
+        message:
+            'فایل ZIP «$name» از قبل وجود دارد. با نسخه‌ی جدید جایگزین شود؟',
         confirmLabel: 'بازنویسی',
       );
 
@@ -187,9 +188,9 @@ class _FileManagerPageState extends State<FileManagerPage> {
       await _loadData();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('ساخت ZIP با خطا مواجه شد: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('ساخت ZIP با خطا مواجه شد: $e')));
     }
   }
 
@@ -210,16 +211,16 @@ class _FileManagerPageState extends State<FileManagerPage> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('پوشه حذف شد.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('پوشه حذف شد.')));
 
       await _loadData();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('خطا در حذف: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('خطا در حذف: $e')));
     }
   }
 
@@ -228,17 +229,28 @@ class _FileManagerPageState extends State<FileManagerPage> {
 
     if (files.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('این پوشه فایلی برای اشتراک‌گذاری ندارد.')),
+        const SnackBar(
+          content: Text('این پوشه فایلی برای اشتراک‌گذاری ندارد.'),
+        ),
       );
       return;
     }
 
-    await Share.shareXFiles(
+    final shareResult = await Share.shareXFiles(
       files.map((f) => XFile(f.path)).toList(),
       subject: FileManagerService.displayName(folder),
     );
 
-    // فقط بعد از زدن روی «اشتراک‌گذاری» یادآور به حالت زرد (منتظر رسید) می‌رود.
+    if (shareResult.status != ShareResultStatus.success) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('اشتراک‌گذاری لغو شد و وضعیت مشتری تغییر نکرد.'),
+        ),
+      );
+      return;
+    }
+
     await CustomerStatusService.markSent(folder.path);
 
     if (!mounted) return;
@@ -275,9 +287,9 @@ class _FileManagerPageState extends State<FileManagerPage> {
       await _loadData();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('خطا در تغییر نام: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('خطا در تغییر نام: $e')));
     }
   }
 
@@ -299,26 +311,34 @@ class _FileManagerPageState extends State<FileManagerPage> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('فایل حذف شد.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('فایل حذف شد.')));
 
       await _loadData();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('خطا در حذف: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('خطا در حذف: $e')));
     }
   }
 
   Future<void> _shareZip(File zip) async {
-    await Share.shareXFiles(
-      [XFile(zip.path)],
-      subject: FileManagerService.displayName(zip),
-    );
+    final shareResult = await Share.shareXFiles([
+      XFile(zip.path),
+    ], subject: FileManagerService.displayName(zip));
 
-    // فقط بعد از زدن روی «اشتراک‌گذاری» یادآور به حالت زرد (منتظر رسید) می‌رود.
+    if (shareResult.status != ShareResultStatus.success) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('اشتراک‌گذاری لغو شد و وضعیت مشتری تغییر نکرد.'),
+        ),
+      );
+      return;
+    }
+
     await CustomerStatusService.markSent(zip.path);
 
     if (!mounted) return;
@@ -376,10 +396,7 @@ class _FileManagerPageState extends State<FileManagerPage> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(15),
-                borderSide: const BorderSide(
-                  color: _primaryBlue,
-                  width: 1.5,
-                ),
+                borderSide: const BorderSide(color: _primaryBlue, width: 1.5),
               ),
             ),
           ),
@@ -457,7 +474,9 @@ class _FileManagerPageState extends State<FileManagerPage> {
             ),
             TextButton(
               style: TextButton.styleFrom(
-                foregroundColor: danger ? const Color(0xFFE84C4C) : _primaryBlue,
+                foregroundColor: danger
+                    ? const Color(0xFFE84C4C)
+                    : _primaryBlue,
               ),
               onPressed: () => Navigator.pop(dialogContext, true),
               child: Text(
@@ -505,10 +524,7 @@ class _FileManagerPageState extends State<FileManagerPage> {
                       gradient: LinearGradient(
                         begin: Alignment.topRight,
                         end: Alignment.bottomLeft,
-                        colors: [
-                          Color(0xFF0D47C9),
-                          Color(0xFF1976E8),
-                        ],
+                        colors: [Color(0xFF0D47C9), Color(0xFF1976E8)],
                       ),
                       borderRadius: BorderRadius.only(
                         bottomLeft: Radius.circular(34),
@@ -527,7 +543,7 @@ class _FileManagerPageState extends State<FileManagerPage> {
                           ),
                           tooltip: 'بازگشت',
                         ),
-                        const SizedBox(width: 10,),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -698,16 +714,16 @@ class _FileManagerPageState extends State<FileManagerPage> {
     );
   }
 
-  Widget _leadingWithDot(IconData icon, Color iconColor, ReminderStatus status) {
+  Widget _leadingWithDot(
+    IconData icon,
+    Color iconColor,
+    ReminderStatus status,
+  ) {
     return Stack(
       clipBehavior: Clip.none,
       children: [
         Icon(icon, color: iconColor),
-        Positioned(
-          right: -2,
-          top: -2,
-          child: _dot(status.dotColor),
-        ),
+        Positioned(right: -2, top: -2, child: _dot(status.dotColor)),
       ],
     );
   }
@@ -742,11 +758,7 @@ class _FileManagerPageState extends State<FileManagerPage> {
 
           return _buildEntityCard(
             marginBottom: 10,
-            leading: _leadingWithDot(
-              Icons.folder_rounded,
-              _purple,
-              status,
-            ),
+            leading: _leadingWithDot(Icons.folder_rounded, _purple, status),
             title: FileManagerService.displayName(folder),
             subtitle: '$fileCount فایل',
             onTap: () => _openFolder(folder),
@@ -778,22 +790,10 @@ class _FileManagerPageState extends State<FileManagerPage> {
                 }
               },
               itemBuilder: (context) => const [
-                PopupMenuItem(
-                  value: 'open',
-                  child: Text('باز کردن'),
-                ),
-                PopupMenuItem(
-                  value: 'rename',
-                  child: Text('تغییر نام'),
-                ),
-                PopupMenuItem(
-                  value: 'zip',
-                  child: Text('زیپ کردن'),
-                ),
-                PopupMenuItem(
-                  value: 'share',
-                  child: Text('اشتراک‌گذاری'),
-                ),
+                PopupMenuItem(value: 'open', child: Text('باز کردن')),
+                PopupMenuItem(value: 'rename', child: Text('تغییر نام')),
+                PopupMenuItem(value: 'zip', child: Text('زیپ کردن')),
+                PopupMenuItem(value: 'share', child: Text('اشتراک‌گذاری')),
                 PopupMenuItem(
                   value: 'delete',
                   child: Text(
@@ -809,10 +809,7 @@ class _FileManagerPageState extends State<FileManagerPage> {
     );
   }
 
-  Widget _buildEmptyState({
-    required IconData icon,
-    required String title,
-  }) {
+  Widget _buildEmptyState({required IconData icon, required String title}) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -826,11 +823,7 @@ class _FileManagerPageState extends State<FileManagerPage> {
                 color: const Color(0xFFF2F6FF),
                 borderRadius: BorderRadius.circular(22),
               ),
-              child: Icon(
-                icon,
-                color: _primaryBlue,
-                size: 34,
-              ),
+              child: Icon(icon, color: _primaryBlue, size: 34),
             ),
             const SizedBox(height: 16),
             Text(
@@ -980,14 +973,8 @@ class _FileManagerPageState extends State<FileManagerPage> {
                 }
               },
               itemBuilder: (context) => const [
-                PopupMenuItem(
-                  value: 'rename',
-                  child: Text('تغییر نام'),
-                ),
-                PopupMenuItem(
-                  value: 'share',
-                  child: Text('اشتراک‌گذاری'),
-                ),
+                PopupMenuItem(value: 'rename', child: Text('تغییر نام')),
+                PopupMenuItem(value: 'share', child: Text('اشتراک‌گذاری')),
                 PopupMenuItem(
                   value: 'delete',
                   child: Text(
@@ -1003,7 +990,6 @@ class _FileManagerPageState extends State<FileManagerPage> {
     );
   }
 }
-
 
 /// صفحه‌ی ساده‌ی داخل‌اپی برای مرور فایل‌های یک پوشه‌ی مشتری.
 class _FolderContentsPage extends StatefulWidget {
@@ -1312,14 +1298,14 @@ class _FolderContentsPageState extends State<_FolderContentsPage> {
       _loadFiles();
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('عکس با موفقیت اضافه شد.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('عکس با موفقیت اضافه شد.')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('خطا در افزودن عکس: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('خطا در افزودن عکس: $e')));
     } finally {
       if (mounted) setState(() => _isAdding = false);
     }
@@ -1346,10 +1332,7 @@ class _FolderContentsPageState extends State<_FolderContentsPage> {
                     gradient: LinearGradient(
                       begin: Alignment.topRight,
                       end: Alignment.bottomLeft,
-                      colors: [
-                        Color(0xFF0D47C9),
-                        Color(0xFF1976E8),
-                      ],
+                      colors: [Color(0xFF0D47C9), Color(0xFF1976E8)],
                     ),
                     borderRadius: BorderRadius.only(
                       bottomLeft: Radius.circular(34),
@@ -1360,13 +1343,13 @@ class _FolderContentsPageState extends State<_FolderContentsPage> {
                     children: [
                       Container(
                         child: IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(
-                        Icons.arrow_back_rounded,
-                        color: Colors.white,
-                        size: 30,
-                      ),
-                    ),
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(
+                            Icons.arrow_back_rounded,
+                            color: Colors.white,
+                            size: 30,
+                          ),
+                        ),
                       ),
                       Container(
                         width: 54,
@@ -1430,8 +1413,8 @@ class _FolderContentsPageState extends State<_FolderContentsPage> {
                           itemCount: _files.length,
                           itemBuilder: (context, index) {
                             final file = _files[index];
-                            final sizeKb =
-                                (file.lengthSync() / 1024).toStringAsFixed(1);
+                            final sizeKb = (file.lengthSync() / 1024)
+                                .toStringAsFixed(1);
                             final isReceipt = _isReceipt(file);
                             final iconColor = isReceipt
                                 ? const Color(0xFF22B965)
@@ -1439,8 +1422,8 @@ class _FolderContentsPageState extends State<_FolderContentsPage> {
                             final icon = isReceipt
                                 ? Icons.receipt_long_rounded
                                 : (_isImage(file)
-                                    ? Icons.image_rounded
-                                    : Icons.insert_drive_file_rounded);
+                                      ? Icons.image_rounded
+                                      : Icons.insert_drive_file_rounded);
 
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 10),
@@ -1464,8 +1447,9 @@ class _FolderContentsPageState extends State<_FolderContentsPage> {
                                           height: 54,
                                           decoration: BoxDecoration(
                                             color: iconColor.withOpacity(0.10),
-                                            borderRadius:
-                                                BorderRadius.circular(17),
+                                            borderRadius: BorderRadius.circular(
+                                              17,
+                                            ),
                                           ),
                                           child: Icon(
                                             icon,
@@ -1484,11 +1468,10 @@ class _FolderContentsPageState extends State<_FolderContentsPage> {
                                                   file,
                                                 ),
                                                 maxLines: 1,
-                                                overflow:
-                                                    TextOverflow.ellipsis,
+                                                overflow: TextOverflow.ellipsis,
                                                 style: const TextStyle(
-                                                  color:
-                                                      _FileManagerPageState._darkText,
+                                                  color: _FileManagerPageState
+                                                      ._darkText,
                                                   fontFamily: 'Traffic',
                                                   fontSize: 17,
                                                   fontWeight: FontWeight.bold,
@@ -1498,8 +1481,8 @@ class _FolderContentsPageState extends State<_FolderContentsPage> {
                                               Text(
                                                 '$sizeKb KB',
                                                 style: const TextStyle(
-                                                  color:
-                                                      _FileManagerPageState._secondaryText,
+                                                  color: _FileManagerPageState
+                                                      ._secondaryText,
                                                   fontFamily: 'Traffic',
                                                   fontSize: 13,
                                                 ),
@@ -1576,8 +1559,9 @@ class _ImageCropPageState extends State<_ImageCropPage> {
       );
       if (byteData == null) return null;
 
-      final img.Image? decodedImage =
-          img.decodeImage(byteData.buffer.asUint8List());
+      final img.Image? decodedImage = img.decodeImage(
+        byteData.buffer.asUint8List(),
+      );
       if (decodedImage == null) return null;
 
       return Uint8List.fromList(img.encodeJpg(decodedImage, quality: 85));
@@ -1593,9 +1577,9 @@ class _ImageCropPageState extends State<_ImageCropPage> {
 
     if (bytes == null) {
       setState(() => _isProcessing = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('برش تصویر انجام نشد.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('برش تصویر انجام نشد.')));
       return;
     }
 
@@ -1626,10 +1610,7 @@ class _ImageCropPageState extends State<_ImageCropPage> {
               Expanded(
                 child: CropImage(
                   controller: cropController,
-                  image: Image.file(
-                    widget.imageFile,
-                    fit: BoxFit.contain,
-                  ),
+                  image: Image.file(widget.imageFile, fit: BoxFit.contain),
                 ),
               ),
               Padding(

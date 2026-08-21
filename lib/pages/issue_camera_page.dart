@@ -34,7 +34,8 @@ class _StyledDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final viewInsets = MediaQuery.viewInsetsOf(context);
-    final maxHeight = MediaQuery.sizeOf(context).height - viewInsets.bottom - 32;
+    final maxHeight =
+        MediaQuery.sizeOf(context).height - viewInsets.bottom - 32;
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -148,10 +149,7 @@ class _DialogButton extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       textDirection: TextDirection.rtl,
       children: [
-        if (icon != null) ...[
-          Icon(icon, size: 19),
-          const SizedBox(width: 7),
-        ],
+        if (icon != null) ...[Icon(icon, size: 19), const SizedBox(width: 7)],
         Text(
           text,
           textDirection: TextDirection.rtl,
@@ -186,9 +184,7 @@ class _DialogButton extends StatelessWidget {
         foregroundColor: color,
         side: BorderSide(color: color.withOpacity(0.65)),
         padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 13),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       ),
       child: child,
     );
@@ -228,7 +224,10 @@ class _StyledTextField extends StatelessWidget {
         prefixIcon: Icon(icon, color: const Color(0xFF1565C0)),
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 16,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
@@ -406,8 +405,9 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
       );
       if (byteData == null) return null;
 
-      final img.Image? decodedImage =
-          img.decodeImage(byteData.buffer.asUint8List());
+      final img.Image? decodedImage = img.decodeImage(
+        byteData.buffer.asUint8List(),
+      );
       if (decodedImage == null) return null;
 
       return Uint8List.fromList(img.encodeJpg(decodedImage, quality: 85));
@@ -421,13 +421,9 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
     final jpgBytes = await cropCurrentImageToJpg();
     if (jpgBytes == null) return;
 
-    savedCardsData.add({
-      'type': currentCard,
-      'bytes': jpgBytes,
-    });
+    savedCardsData.add({'type': currentCard, 'bytes': jpgBytes});
 
-    if (widget.customer.currentCardIndex <
-        widget.customer.cards.length - 1) {
+    if (widget.customer.currentCardIndex < widget.customer.cards.length - 1) {
       setState(() {
         widget.customer.currentCardIndex++;
         capturedImage = null;
@@ -491,8 +487,7 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
     for (final item in customerFolder.listSync(recursive: false)) {
       if (item is File && item.lengthSync() > 0) {
         final Uint8List fileBytes = await item.readAsBytes();
-        final String fileName =
-            item.path.split(Platform.pathSeparator).last;
+        final String fileName = item.path.split(Platform.pathSeparator).last;
         archive.addFile(ArchiveFile(fileName, fileBytes.length, fileBytes));
       }
     }
@@ -533,10 +528,24 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
             color: const Color(0xFF1565C0),
             icon: Icons.share_rounded,
             onPressed: () async {
-              await Share.shareXFiles(
-                [XFile(zipFile.path)],
-                text: 'فایل زیپ مدارک مشتری: ${widget.customer.fullName}',
-              );
+              final shareResult = await Share.shareXFiles([
+                XFile(zipFile.path),
+              ], text: 'فایل زیپ مدارک مشتری: ${widget.customer.fullName}');
+
+              if (shareResult.status != ShareResultStatus.success) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'اشتراک‌گذاری لغو شد و وضعیت مشتری تغییر نکرد.',
+                      ),
+                    ),
+                  );
+                }
+                return;
+              }
+
+              await CustomerStatusService.markSent(zipFile.path);
 
               // بعد از اشتراک‌گذاری، یادآور این مشتری زرد (منتظر رسید)
               // می‌شود و خودِ دیالوگ هم بسته می‌شود، دقیقاً مثل «بعداً».
@@ -556,8 +565,9 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
   String _safeFileName(CardType type) {
     final national = textControllers[CardType.national]?.text.trim() ?? '';
     final phoneCard = _phoneNumberCardType;
-    final phoneNumber =
-        phoneCard != null ? (textControllers[phoneCard]?.text.trim() ?? '') : '';
+    final phoneNumber = phoneCard != null
+        ? (textControllers[phoneCard]?.text.trim() ?? '')
+        : '';
 
     switch (type) {
       case CardType.national:
@@ -684,8 +694,9 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
               color: const Color(0xFF35B96B),
               icon: Icons.check_rounded,
               onPressed: () async {
-                final hasNational =
-                    widget.customer.cards.contains(CardType.national);
+                final hasNational = widget.customer.cards.contains(
+                  CardType.national,
+                );
                 final phoneCard = _phoneNumberCardType;
 
                 final national =
@@ -710,15 +721,15 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
                   return;
                 }
 
-                final statusNotifier =
-                    ValueNotifier<String>('در حال ایجاد پوشه...');
+                final statusNotifier = ValueNotifier<String>(
+                  'در حال ایجاد پوشه...',
+                );
 
                 Navigator.pop(context);
                 _showLoadingDialog(this.context, statusNotifier);
 
                 try {
-                  final customerFolder =
-                      await StorageService.getCustomerFolder(
+                  final customerFolder = await StorageService.getCustomerFolder(
                     operationType: widget.customer.operationType,
                     customerFullName: widget.customer.fullName,
                   );
@@ -765,8 +776,9 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
                     usedFileNames.add(fileName);
 
                     writeOperations.add(
-                      File('${customerFolder.path}/$fileName.jpg')
-                          .writeAsBytes(bytes, flush: true),
+                      File(
+                        '${customerFolder.path}/$fileName.jpg',
+                      ).writeAsBytes(bytes, flush: true),
                     );
                   }
 
@@ -777,20 +789,14 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
 
                   if (!mounted) return;
                   Navigator.pop(this.context);
-                  await _showSuccessDialog(
-                    customerFolder.path,
-                    zipFile,
-                  );
+                  await _showSuccessDialog(customerFolder.path, zipFile);
                 } catch (e, stackTrace) {
                   debugPrint('ISSUE FINAL SAVE ERROR: $e');
                   debugPrintStack(stackTrace: stackTrace);
 
                   if (mounted) {
                     Navigator.pop(this.context);
-                    _showStyledSnackBar(
-                      'ذخیره انجام نشد: $e',
-                      isError: true,
-                    );
+                    _showStyledSnackBar('ذخیره انجام نشد: $e', isError: true);
                   }
                 }
               },
@@ -829,10 +835,7 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
     return result ?? false;
   }
 
-  void _showStyledSnackBar(
-    String message, {
-    bool isError = false,
-  }) {
+  void _showStyledSnackBar(String message, {bool isError = false}) {
     if (!mounted) return;
 
     final messenger = ScaffoldMessenger.of(context);
@@ -840,11 +843,10 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
     messenger.showSnackBar(
       SnackBar(
         behavior: SnackBarBehavior.floating,
-        backgroundColor:
-            isError ? const Color(0xFFE85D75) : const Color(0xFF1565C0),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
+        backgroundColor: isError
+            ? const Color(0xFFE85D75)
+            : const Color(0xFF1565C0),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 18),
         content: Row(
           textDirection: TextDirection.rtl,
@@ -876,8 +878,7 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
 
   @override
   Widget build(BuildContext context) {
-    final currentCard =
-        widget.customer.cards[widget.customer.currentCardIndex];
+    final currentCard = widget.customer.cards[widget.customer.currentCardIndex];
 
     return PopScope(
       canPop: false,
@@ -1123,9 +1124,7 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
   Widget buildCamera() {
     if (!isCameraReady || cameraController == null) {
       return const Center(
-        child: CircularProgressIndicator(
-          color: Color(0xFF1565C0),
-        ),
+        child: CircularProgressIndicator(color: Color(0xFF1565C0)),
       );
     }
 
@@ -1139,10 +1138,8 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
       final isPortrait =
           MediaQuery.orientationOf(context) == Orientation.portrait;
 
-      final previewWidth =
-          isPortrait ? previewSize.height : previewSize.width;
-      final previewHeight =
-          isPortrait ? previewSize.width : previewSize.height;
+      final previewWidth = isPortrait ? previewSize.height : previewSize.width;
+      final previewHeight = isPortrait ? previewSize.width : previewSize.height;
 
       cameraPreview = FittedBox(
         fit: BoxFit.cover,
@@ -1162,10 +1159,7 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(24),
-          child: ColoredBox(
-            color: Colors.black,
-            child: cameraPreview,
-          ),
+          child: ColoredBox(color: Colors.black, child: cameraPreview),
         ),
         ColorFiltered(
           colorFilter: ColorFilter.mode(
@@ -1242,10 +1236,7 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
   Widget buildCapturedImage() {
     return CropImage(
       controller: cropController,
-      image: Image.file(
-        capturedImage!,
-        fit: BoxFit.contain,
-      ),
+      image: Image.file(capturedImage!, fit: BoxFit.contain),
     );
   }
 
@@ -1258,4 +1249,3 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
     super.dispose();
   }
 }
-
