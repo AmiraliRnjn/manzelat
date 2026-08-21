@@ -815,29 +815,34 @@ Future<void> takePicture() async {
                           throw Exception('تصویر یافت نشد.');
                         final Uint8List originalBytes = ticketCardData['bytes'];
                         List<Future<void>> writeOperations = [];
+                        final usedFileNames = <String>{};
 
                         // تکثیر یک عکس به ۳ فایل مجزا با نام‌های متفاوت
-                        writeOperations.add(
-                          File(
-                            '${customerFolder.path}/$ticketText.jpg',
-                          ).writeAsBytes(originalBytes, flush: true),
-                        );
-                        writeOperations.add(
-                          File(
-                            '${customerFolder.path}/$nationalText.jpg',
-                          ).writeAsBytes(originalBytes, flush: true),
-                        );
-                        writeOperations.add(
-                          File(
-                            '${customerFolder.path}/$manzelatText.jpg',
-                          ).writeAsBytes(originalBytes, flush: true),
-                        );
+                        for (final desired in [
+                          ticketText,
+                          nationalText,
+                          manzelatText,
+                        ]) {
+                          final uniqueName = StorageService.uniqueFileName(
+                            folder: customerFolder,
+                            desiredName: desired,
+                            alreadyPlanned: usedFileNames,
+                          );
+                          usedFileNames.add(uniqueName);
+
+                          writeOperations.add(
+                            File(
+                              '${customerFolder.path}/$uniqueName.jpg',
+                            ).writeAsBytes(originalBytes, flush: true),
+                          );
+                        }
 
                         await Future.wait(writeOperations);
                       } else {
                         // ------------- [بخش دوم: کدی که پرسیدی دقیقاً اینجا در ELSE قرار می‌گیرد] -------------
                         // منطق دقیق دکمه‌های ۲، ۳ و ۴ بر اساس مدارکی که کاربر عکاسی می‌کند
                         List<Future<void>> writeOperations = [];
+                        final usedFileNames = <String>{};
 
                         // بررسی وضعیت مدارک برای تشخیص دکمه فشرده شده
                         bool containsNational = savedCardsData.any(
@@ -905,6 +910,19 @@ Future<void> takePicture() async {
                             fileName =
                                 '${widget.customer.fullName}_${type.name}';
                           }
+
+                          // اگر این نام قبلاً روی دیسک وجود داشته باشد
+                          // (مثلاً از قبل، یا از طریق «افزودن عکس») یا در
+                          // همین دسته‌ی ذخیره‌سازی استفاده شده باشد (مثلاً
+                          // کاربر یک عدد را هم برای سریال بلیط و هم کد ملی
+                          // وارد کرده)، برای جلوگیری از بازنویسی و گم‌شدن
+                          // عکس، یک شماره به آخرش اضافه می‌شود.
+                          fileName = StorageService.uniqueFileName(
+                            folder: customerFolder,
+                            desiredName: fileName,
+                            alreadyPlanned: usedFileNames,
+                          );
+                          usedFileNames.add(fileName);
 
                           final file = File(
                             '${customerFolder.path}/$fileName.jpg',

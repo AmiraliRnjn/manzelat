@@ -69,4 +69,36 @@ class StorageService {
 
   }
 
+  /// یک نام فایل یکتا (بدون پسوند) داخل این پوشه برمی‌گرداند. اگر نامی که
+  /// خواسته شده از قبل روی دیسک وجود داشته باشد (مثلاً از یک بار قبلی
+  /// یا از طریق «افزودن عکس») یا در همین دسته‌ی ذخیره‌سازی که در حال
+  /// انجام است قبلاً استفاده شده باشد (alreadyPlanned)، یک شماره به آخرش
+  /// اضافه می‌شود تا هیچ‌وقت یک عکس بازنویسی و گم نشود.
+  static String uniqueFileName({
+    required Directory folder,
+    required String desiredName,
+    required Set<String> alreadyPlanned,
+    String extension = 'jpg',
+  }) {
+    bool isTaken(String name) {
+      if (alreadyPlanned.contains(name)) return true;
+      final file = File(
+        '${folder.path}${Platform.pathSeparator}$name.$extension',
+      );
+      return file.existsSync();
+    }
+
+    if (!isTaken(desiredName)) return desiredName;
+
+    var counter = 2;
+    String candidate;
+    do {
+      candidate = '${desiredName}_$counter';
+      counter++;
+    } while (isTaken(candidate));
+
+    return candidate;
+  }
+
 }
+

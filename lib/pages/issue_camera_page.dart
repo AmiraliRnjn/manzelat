@@ -739,17 +739,30 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
                   }
 
                   final writeOperations = <Future<void>>[];
+                  final usedFileNames = <String>{};
 
                   for (final cardData in savedCardsData) {
                     final CardType type = cardData['type'] as CardType;
                     final Uint8List bytes = cardData['bytes'] as Uint8List;
-                    final fileName = _safeFileName(type);
+                    String fileName = _safeFileName(type);
 
                     if (fileName.isEmpty) {
                       throw Exception(
                         'نام فایل برای ${getCardName(type)} خالی است.',
                       );
                     }
+
+                    // اگر این نام قبلاً روی دیسک وجود داشته باشد (مثلاً از
+                    // قبل، یا از طریق «افزودن عکس») یا در همین دسته‌ی
+                    // ذخیره‌سازی استفاده شده باشد (مثلاً کاربر یک عدد را هم
+                    // برای کد ملی و هم شماره تلفن وارد کرده)، برای جلوگیری
+                    // از بازنویسی و گم‌شدن عکس، یک شماره به آخرش اضافه می‌شود.
+                    fileName = StorageService.uniqueFileName(
+                      folder: customerFolder,
+                      desiredName: fileName,
+                      alreadyPlanned: usedFileNames,
+                    );
+                    usedFileNames.add(fileName);
 
                     writeOperations.add(
                       File('${customerFolder.path}/$fileName.jpg')
