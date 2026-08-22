@@ -30,8 +30,12 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _loadWorkDate() async {
     final date = await WorkDateService.getWorkDate();
+
     if (!mounted) return;
-    setState(() => workDate = date);
+
+    setState(() {
+      workDate = date;
+    });
   }
 
   Future<void> _pickWorkDate() async {
@@ -41,23 +45,43 @@ class _HomePageState extends State<HomePage> {
       firstDate: Jalali(1400, 1),
       lastDate: Jalali(1450, 12),
     );
+
     if (picked == null) return;
+
     await WorkDateService.setWorkDate(picked);
+
     if (!mounted) return;
-    setState(() => workDate = picked);
+
+    setState(() {
+      workDate = picked;
+    });
+  }
+
+  bool _isToday() {
+    if (workDate == null) return true;
+
+    final today = Jalali.now();
+
+    return workDate!.year == today.year &&
+        workDate!.month == today.month &&
+        workDate!.day == today.day;
   }
 
   void _openCharge() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const ChargeCategoryPage()),
+      MaterialPageRoute(
+        builder: (_) => const ChargeCategoryPage(),
+      ),
     );
   }
 
   void _openIssue() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const IssueCategoryPage()),
+      MaterialPageRoute(
+        builder: (_) => const IssueCategoryPage(),
+      ),
     );
   }
 
@@ -86,19 +110,24 @@ class _HomePageState extends State<HomePage> {
   void _openSettings() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const SettingsPage()),
+      MaterialPageRoute(
+        builder: (_) => const SettingsPage(),
+      ),
     );
   }
 
   Widget _buildHeader() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 32, 24, 70),
+      padding: const EdgeInsets.fromLTRB(24, 30, 24, 30),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
-          colors: [Color(0xFF0D47B5), Color(0xFF1976D2)],
+          colors: [
+            Color(0xFF0D47B5),
+            Color(0xFF1976D2),
+          ],
         ),
         borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(42),
@@ -120,7 +149,7 @@ class _HomePageState extends State<HomePage> {
           ),
           SizedBox(height: 8),
           Text(
-            ' سلام در خدمت هستم 👋',
+            'سلام در خدمت هستم 👋',
             textDirection: TextDirection.rtl,
             style: TextStyle(
               color: Colors.white,
@@ -134,77 +163,122 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildActiveDateCard() {
-    return Transform.translate(
-      offset: const Offset(0, -38),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Material(
-          color: Colors.white,
-          elevation: 5,
-          shadowColor: Colors.black12,
+    final isToday = _isToday();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      child: Material(
+        color: Colors.white,
+        elevation: 5,
+        shadowColor: Colors.black12,
+        borderRadius: BorderRadius.circular(24),
+        child: InkWell(
           borderRadius: BorderRadius.circular(24),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(24),
-            onTap: _pickWorkDate,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 18,
-                vertical: 16,
-              ),
-              child: Row(
-                textDirection: TextDirection.rtl,
-                children: [
-                  Container(
-                    width: 58,
-                    height: 58,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF2F6FF),
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: const Icon(
-                      Icons.calendar_month_rounded,
-                      color: primaryBlue,
-                      size: 32,
-                    ),
+          onTap: _pickWorkDate,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              textDirection: TextDirection.rtl,
+              children: [
+                Container(
+                  width: 58,
+                  height: 58,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF2F6FF),
+                    borderRadius: BorderRadius.circular(18),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      textDirection: TextDirection.rtl,
-                      children: [
-                        const Text(
-                          'تاریخ فعال',
-                          textDirection: TextDirection.rtl,
-                          style: TextStyle(
-                            color: Color(0xFF374151),
-                            fontFamily: 'Traffic',
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                  child: const Icon(
+                    Icons.calendar_month_rounded,
+                    color: primaryBlue,
+                    size: 32,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    textDirection: TextDirection.rtl,
+                    children: [
+                      const Text(
+                        'تاریخ فعال',
+                        textDirection: TextDirection.rtl,
+                        style: TextStyle(
+                          color: Color(0xFF374151),
+                          fontFamily: 'Traffic',
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
                         ),
-                        const SizedBox(height: 5),
-                        Text(
-                          workDate != null
-                              ? workDate!.formatFullDate()
-                              : 'تاریخی انتخاب نشده است',
-                          textDirection: TextDirection.rtl,
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontFamily: 'Traffic',
-                            fontSize: 14,
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        workDate != null
+                            ? workDate!.formatFullDate()
+                            : 'تاریخی انتخاب نشده است',
+                        textDirection: TextDirection.rtl,
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontFamily: 'Traffic',
+                          fontSize: 14,
+                        ),
+                      ),
+
+                      // هشدار تاریخ غیرامروز
+                      if (workDate != null && !isToday) ...[
+                        const SizedBox(height: 9),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 7,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF8E8),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: const Color(0xFFFFD98A),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            textDirection: TextDirection.rtl,
+                            children: [
+                              Icon(
+                                Icons.info_outline_rounded,
+                                color: Color(0xFFD97706),
+                                size: 17,
+                              ),
+                              SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  'تاریخ انتخاب‌شده، تاریخ امروز نیست',
+                                  textDirection: TextDirection.rtl,
+                                  style: TextStyle(
+                                    color: Color(0xFFB45309),
+                                    fontFamily: 'Traffic',
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
-                    ),
+                    ],
                   ),
-                  const Icon(
+                ),
+                const SizedBox(width: 8),
+                const Padding(
+                  padding: EdgeInsets.only(top: 3),
+                  child: Icon(
                     Icons.edit_calendar_outlined,
                     color: primaryBlue,
                     size: 24,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
@@ -231,7 +305,10 @@ class _HomePageState extends State<HomePage> {
               gradient: LinearGradient(
                 begin: Alignment.topRight,
                 end: Alignment.bottomLeft,
-                colors: [color.withOpacity(0.88), color],
+                colors: [
+                  color.withOpacity(0.88),
+                  color,
+                ],
               ),
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
@@ -245,7 +322,11 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, color: Colors.white, size: 46),
+                Icon(
+                  icon,
+                  color: Colors.white,
+                  size: 46,
+                ),
                 const SizedBox(height: 10),
                 Text(
                   title,
@@ -290,7 +371,10 @@ class _HomePageState extends State<HomePage> {
         borderRadius: BorderRadius.circular(20),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 15,
+          ),
           child: Row(
             textDirection: TextDirection.rtl,
             children: [
@@ -301,7 +385,11 @@ class _HomePageState extends State<HomePage> {
                   color: color.withOpacity(0.10),
                   borderRadius: BorderRadius.circular(17),
                 ),
-                child: Icon(icon, color: color, size: 31),
+                child: Icon(
+                  icon,
+                  color: color,
+                  size: 31,
+                ),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -353,66 +441,75 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           children: [
             _buildHeader(),
+
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.only(bottom: 24),
+              child: Padding(
+                padding: const EdgeInsets.only(top: 0),
                 child: Column(
                   children: [
+                    // کارت تاریخ دیگر با Transform روی هدر قرار نمی‌گیرد.
+                    // بنابراین با بزرگ شدن متن هشدار، صفحه به هم نمی‌ریزد.
                     _buildActiveDateCard(),
-                    Transform.translate(
-                      offset: const Offset(0, -18),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              textDirection: TextDirection.rtl,
-                              children: [
-                                _buildMainAction(
-                                  title: 'شارژ',
-                                  subtitle: 'شارژ کارت‌ها',
-                                  icon: Icons.bolt_rounded,
-                                  color: purple,
-                                  onTap: _openCharge,
-                                ),
-                                const SizedBox(width: 14),
-                                _buildMainAction(
-                                  title: 'صدور',
-                                  subtitle: 'صدور کارت‌ها',
-                                  icon: Icons.description_rounded,
-                                  color: green,
-                                  onTap: _openIssue,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 28),
-                            const Text(
-                              'پوشه‌ها',
-                              textDirection: TextDirection.rtl,
-                              style: TextStyle(
-                                color: Color(0xFF172554),
-                                fontFamily: 'Traffic',
-                                fontSize: 23,
-                                fontWeight: FontWeight.bold,
+              
+                    const SizedBox(height: 22),
+              
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            textDirection: TextDirection.rtl,
+                            children: [
+                              _buildMainAction(
+                                title: 'شارژ',
+                                subtitle: 'شارژ کارت‌ها',
+                                icon: Icons.bolt_rounded,
+                                color: purple,
+                                onTap: _openCharge,
                               ),
+                              const SizedBox(width: 14),
+                              _buildMainAction(
+                                title: 'صدور',
+                                subtitle: 'صدور کارت‌ها',
+                                icon: Icons.description_rounded,
+                                color: green,
+                                onTap: _openIssue,
+                              ),
+                            ],
+                          ),
+              
+                          const SizedBox(height: 15),
+              
+                          const Text(
+                            'پوشه‌ها',
+                            textDirection: TextDirection.rtl,
+                            style: TextStyle(
+                              color: Color(0xFF172554),
+                              fontFamily: 'Traffic',
+                              fontSize: 23,
+                              fontWeight: FontWeight.bold,
                             ),
-                            const SizedBox(height: 12),
-                            _buildFolderTile(
-                              title: 'پوشه‌های شارژ',
-                              icon: Icons.folder_rounded,
-                              color: purple,
-                              onTap: _openChargeFolders,
-                            ),
-                            const SizedBox(height: 12),
-                            _buildFolderTile(
-                              title: 'پوشه‌های صدور',
-                              icon: Icons.folder_rounded,
-                              color: green,
-                              onTap: _openIssueFolders,
-                            ),
-                          ],
-                        ),
+                          ),
+              
+                          const SizedBox(height: 5),
+              
+                          _buildFolderTile(
+                            title: 'پوشه‌های شارژ',
+                            icon: Icons.folder_rounded,
+                            color: purple,
+                            onTap: _openChargeFolders,
+                          ),
+              
+                          const SizedBox(height: 12),
+              
+                          _buildFolderTile(
+                            title: 'پوشه‌های صدور',
+                            icon: Icons.folder_rounded,
+                            color: green,
+                            onTap: _openIssueFolders,
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -422,6 +519,7 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
+
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         currentIndex: currentIndex,
@@ -440,9 +538,13 @@ class _HomePageState extends State<HomePage> {
         ),
         onTap: (index) {
           if (index == 0) {
-            setState(() => currentIndex = 0);
+            setState(() {
+              currentIndex = 0;
+            });
           } else {
-            setState(() => currentIndex = 1);
+            setState(() {
+              currentIndex = 1;
+            });
             _openSettings();
           }
         },
