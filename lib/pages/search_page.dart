@@ -18,7 +18,6 @@ class _SearchPageState extends State<SearchPage> {
 
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
-
   List<SearchResult> _results = const [];
   bool _loading = false;
   String _lastQuery = '';
@@ -37,8 +36,8 @@ class _SearchPageState extends State<SearchPage> {
     final query = _controller.text.trim();
     if (query == _lastQuery) return;
     _lastQuery = query;
-
     final request = ++_requestId;
+
     if (query.isEmpty) {
       setState(() {
         _results = const [];
@@ -52,7 +51,6 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Future<void> _runSearch(String query, int request) async {
-    // یک مکث کوتاه باعث می‌شود هنگام تایپ سریع، برای هر حرف یک scan کامل انجام نشود.
     await Future<void>.delayed(const Duration(milliseconds: 180));
     if (!mounted || request != _requestId) return;
 
@@ -74,8 +72,7 @@ class _SearchPageState extends State<SearchPage> {
     try {
       await OpenFilex.open(result.path);
     } catch (_) {
-      if (!mounted) return;
-      await _showPathDialog(result);
+      if (mounted) await _showPathDialog(result);
     }
   }
 
@@ -100,10 +97,7 @@ class _SearchPageState extends State<SearchPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'بستن',
-              style: TextStyle(fontFamily: 'Traffic'),
-            ),
+            child: const Text('بستن', style: TextStyle(fontFamily: 'Traffic')),
           ),
         ],
       ),
@@ -120,7 +114,7 @@ class _SearchPageState extends State<SearchPage> {
         elevation: 0,
         centerTitle: true,
         title: const Text(
-          'جستجو',
+          'جستجوی مشتری',
           style: TextStyle(
             fontFamily: 'Traffic',
             fontSize: 21,
@@ -138,7 +132,7 @@ class _SearchPageState extends State<SearchPage> {
               textDirection: TextDirection.rtl,
               textInputAction: TextInputAction.search,
               decoration: InputDecoration(
-                hintText: 'نام مشتری، فایل، رسید، تاریخ و...',
+                hintText: 'نام مشتری را وارد کنید',
                 hintTextDirection: TextDirection.rtl,
                 prefixIcon: const Icon(Icons.search_rounded, color: primaryBlue),
                 suffixIcon: _controller.text.isEmpty
@@ -162,10 +156,7 @@ class _SearchPageState extends State<SearchPage> {
                   borderSide: const BorderSide(color: primaryBlue, width: 1.4),
                 ),
               ),
-              style: const TextStyle(
-                fontFamily: 'Traffic',
-                fontSize: 17,
-              ),
+              style: const TextStyle(fontFamily: 'Traffic', fontSize: 17),
             ),
           ),
           if (_loading)
@@ -174,9 +165,7 @@ class _SearchPageState extends State<SearchPage> {
               color: primaryBlue,
               backgroundColor: Color(0xFFEAF2FF),
             ),
-          Expanded(
-            child: _buildBody(),
-          ),
+          Expanded(child: _buildBody()),
         ],
       ),
     );
@@ -186,17 +175,16 @@ class _SearchPageState extends State<SearchPage> {
     if (_controller.text.trim().isEmpty) {
       return const _EmptyState(
         icon: Icons.manage_search_rounded,
-        title: 'جستجو در کل برنامه',
-        subtitle:
-            'نام مشتری، پوشه، عکس، فایل، رسید یا بخشی از مسیر را وارد کنید.',
+        title: 'جستجوی سریع مشتری',
+        subtitle: 'فقط نام مشتری جستجو می‌شود و نتیجه شامل پوشه مشتری و ZIP آن است.',
       );
     }
 
     if (!_loading && _results.isEmpty) {
       return const _EmptyState(
         icon: Icons.search_off_rounded,
-        title: 'نتیجه‌ای پیدا نشد',
-        subtitle: 'عبارت دیگری را امتحان کنید.',
+        title: 'مشتری پیدا نشد',
+        subtitle: 'نام دیگری را امتحان کنید.',
       );
     }
 
@@ -206,10 +194,7 @@ class _SearchPageState extends State<SearchPage> {
       separatorBuilder: (_, __) => const SizedBox(height: 9),
       itemBuilder: (_, index) {
         final result = _results[index];
-        return _ResultTile(
-          result: result,
-          onTap: () => _openResult(result),
-        );
+        return _ResultTile(result: result, onTap: () => _openResult(result));
       },
     );
   }
@@ -228,30 +213,13 @@ class _ResultTile extends StatelessWidget {
   final SearchResult result;
   final VoidCallback onTap;
 
-  const _ResultTile({
-    required this.result,
-    required this.onTap,
-  });
+  const _ResultTile({required this.result, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final color = switch (result.type) {
-      SearchResultType.customer => const Color(0xFF8050E8),
-      SearchResultType.folder => const Color(0xFF1565C0),
-      SearchResultType.receipt => const Color(0xFF22B965),
-      SearchResultType.image => const Color(0xFFE09A00),
-      SearchResultType.archive => const Color(0xFF6B7280),
-      _ => const Color(0xFF526174),
-    };
-
-    final icon = switch (result.type) {
-      SearchResultType.customer => Icons.person_rounded,
-      SearchResultType.folder => Icons.folder_rounded,
-      SearchResultType.receipt => Icons.receipt_long_rounded,
-      SearchResultType.image => Icons.image_rounded,
-      SearchResultType.archive => Icons.folder_zip_rounded,
-      _ => Icons.insert_drive_file_rounded,
-    };
+    final isZip = result.type == SearchResultType.archive;
+    final color = isZip ? const Color(0xFF6B7280) : const Color(0xFF1565C0);
+    final icon = isZip ? Icons.folder_zip_rounded : Icons.folder_rounded;
 
     return Material(
       color: Colors.white,
@@ -306,10 +274,7 @@ class _ResultTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              const Icon(
-                Icons.chevron_left_rounded,
-                color: Color(0xFF9AA1AD),
-              ),
+              const Icon(Icons.chevron_left_rounded, color: Color(0xFF9AA1AD)),
             ],
           ),
         ),
@@ -344,11 +309,7 @@ class _EmptyState extends StatelessWidget {
                 color: const Color(0xFFEAF2FF),
                 borderRadius: BorderRadius.circular(26),
               ),
-              child: Icon(
-                icon,
-                color: const Color(0xFF1565C0),
-                size: 43,
-              ),
+              child: Icon(icon, color: const Color(0xFF1565C0), size: 43),
             ),
             const SizedBox(height: 18),
             Text(

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:archive/archive.dart';
 import 'package:archive/archive_io.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,7 +9,6 @@ import 'package:shamsi_date/shamsi_date.dart';
 import 'storage_settings_service.dart';
 import 'work_date_service.dart';
 
-/// نتیجه‌ی عملیات Backup/Restore.
 class BackupResult {
   final bool success;
   final String message;
@@ -43,15 +43,11 @@ class BackupInspection {
   });
 }
 
-/// مدیریت Backup/Restore کامل اطلاعات برنامه.
+/// Backup/Restore کامل برنامه.
 ///
-/// فرمت Backup اختصاصی برنامه:
-///   manifest.json
-///   app_state.json
-///   data/...
-///
-/// فایل‌های داخل data با ZIP و به‌صورت stream ذخیره می‌شوند تا برای
-/// فایل‌های حجیم، تمام اطلاعات هم‌زمان در RAM قرار نگیرد.
+/// حالت Restore بدون overwrite به‌صورت Merge عمل می‌کند؛ بنابراین می‌توان
+/// Backup سه گوشی را یکی‌یکی روی یک حافظه مقصد Restore کرد و داده‌های موجود
+/// را حذف نکرد. وضعیت receiptها نیز در حالت Merge به‌صورت union ادغام می‌شود.
 class BackupService {
   static const String backupExtension = '.mzbackup';
   static const String _lastBackupKey = 'backup_last_path';
@@ -59,7 +55,6 @@ class BackupService {
   static const String _autoEnabledKey = 'backup_auto_enabled';
   static const String _autoFolderKey = 'backup_auto_folder';
   static const String _autoIntervalDaysKey = 'backup_auto_interval_days';
-
   static const int formatVersion = 1;
 
   static Future<String?> getLastBackupPath() async {
@@ -103,17 +98,13 @@ class BackupService {
   }
 
   static Future<void> setAutoBackupIntervalDays(int days) async {
-    final safeDays = days.clamp(1, 30).toInt();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_autoIntervalDaysKey, safeDays);
+    await prefs.setInt(_autoIntervalDaysKey, days.clamp(1, 30).toInt());
   }
 
-  /// در شروع برنامه اجرا شود. اگر Backup خودکار فعال باشد و موعدش رسیده
-  /// باشد، یک Backup جدید ساخته می‌شود.
   static Future<void> maybeRunAutoBackup() async {
     try {
       if (!await isAutoBackupEnabled()) return;
-
       final folder = await getAutoBackupFolder();
       if (folder == null || folder.trim().isEmpty) return;
 
@@ -122,18 +113,14 @@ class BackupService {
 
       final last = await getLastBackupTime();
       final interval = await getAutoBackupIntervalDays();
-
       if (last != null &&
           DateTime.now().difference(last).inHours < interval * 24) {
         return;
       }
 
-      await createBackup(
-        destinationDirectory: directory,
-        isAutomatic: true,
-      );
+      await createBackup(destinationDirectory: directory, isAutomatic: true);
     } catch (_) {
-      // Backup خودکار نباید باعث Crash شدن برنامه شود.
+      // Backup خودکار نباید باعث Crash برنامه شود.
     }
   }
 
@@ -141,6 +128,8 @@ class BackupService {
     required Directory destinationDirectory,
     bool isAutomatic = false,
   }) async {
+    Directory? tempDir;
+    File? temp;
     try {
       final rootPath = await StorageSettingsService.getStoragePath();
       if (rootPath == null || rootPath.trim().isEmpty) {
@@ -154,54 +143,47 @@ class BackupService {
       if (!await sourceRoot.exists()) {
         return const BackupResult(
           success: false,
-          message: 'پوشه‌ی اصلی اطلاعات برنامه پیدا نشد.',
+          message: 'پوشه اصلی اطلاعات برنامه پیدا نشد.',
         );
       }
 
       await destinationDirectory.create(recursive: true);
-
       final now = DateTime.now();
-      final stamp = _timestamp(now);
       final output = File(
         '${destinationDirectory.path}${Platform.pathSeparator}'
-        'Manzelat_Backup_$stamp$backupExtension',
+        'Manzelat_Backup_${_timestamp(now)}$backupExtension',
       );
-
-      // Backup موقت می‌سازیم تا در صورت قطع شدن عملیات، فایل خراب با نام
-      // Backup نهایی باقی نماند.
-      final temp = File('${output.path}.part');
+      temp = File('${output.path}.part');
       if (await temp.exists()) await temp.delete();
 
       final files = <_BackupEntry>[];
       var totalBytes = 0;
-
       await for (final entity in sourceRoot.list(recursive: true, followLinks: false)) {
         if (entity is! File) continue;
+        final lower = entity.path.toLowerCase();
+        if (lower.endsWith(backupExtension) ||
+            lower.endsWith('$backupExtension.part')) {
+          continue;
+        }
 
-        // Backup قبلی نباید دوباره داخل Backup بعدی قرار بگیرد.
-        if (entity.path.toLowerCase().endsWith(backupExtension)) continue;
-        if (entity.path.toLowerCase().endsWith('$backupExtension.part')) continue;
-
-        final relative = _relativePath(sourceRoot.path, entity.path);
         final stat = await entity.stat();
-
-        files.add(
-          _BackupEntry(
-            path: relative,
-            size: stat.size,
-            modified: stat.modified.millisecondsSinceEpoch,
-          ),
-        );
+        final relative = _relativePath(sourceRoot.path, entity.path);
+        if (relative.isEmpty || _isUnsafeRelativePath(relative)) continue;
+        files.add(_BackupEntry(
+          path: relative,
+          size: stat.size,
+          modified: stat.modified.millisecondsSinceEpoch,
+        ));
         totalBytes += stat.size;
       }
 
       final prefs = await SharedPreferences.getInstance();
+      final workDate = await WorkDateService.getWorkDate();
       final state = <String, dynamic>{
-        'work_date_year': (await WorkDateService.getWorkDate()).year,
-        'work_date_month': (await WorkDateService.getWorkDate()).month,
-        'work_date_day': (await WorkDateService.getWorkDate()).day,
+        'work_date_year': workDate.year,
+        'work_date_month': workDate.month,
+        'work_date_day': workDate.day,
         'receipt_keys': prefs.getStringList('customer_receipt_keys') ?? const [],
-        // storage_path عمداً Restore نمی‌شود؛ چون مسیر دستگاه جدید ممکن است متفاوت باشد.
         'auto_backup_enabled': prefs.getBool(_autoEnabledKey) ?? false,
         'auto_backup_interval_days': prefs.getInt(_autoIntervalDaysKey) ?? 1,
       };
@@ -216,19 +198,13 @@ class BackupService {
         'entries': files.map((e) => e.toJson()).toList(),
       };
 
-      // manifest و state در tempهای جدا ساخته می‌شوند.
-      final tempDir = await Directory(
+      tempDir = await Directory(
         '${Directory.systemTemp.path}${Platform.pathSeparator}'
         'manzelat_backup_${now.microsecondsSinceEpoch}',
       ).create(recursive: true);
 
-      final manifestFile = File(
-        '${tempDir.path}${Platform.pathSeparator}manifest.json',
-      );
-      final stateFile = File(
-        '${tempDir.path}${Platform.pathSeparator}app_state.json',
-      );
-
+      final manifestFile = File('${tempDir.path}${Platform.pathSeparator}manifest.json');
+      final stateFile = File('${tempDir.path}${Platform.pathSeparator}app_state.json');
       await manifestFile.writeAsString(
         const JsonEncoder.withIndent('  ').convert(manifest),
         flush: true,
@@ -243,54 +219,38 @@ class BackupService {
         encoder.create(temp.path);
         await encoder.addFile(manifestFile, 'manifest.json');
         await encoder.addFile(stateFile, 'app_state.json');
-
-        // داده‌ها مستقیماً از دیسک خوانده و داخل ZIP نوشته می‌شوند.
         for (final entry in files) {
           final source = File(
             '${sourceRoot.path}${Platform.pathSeparator}'
             '${entry.path.split('/').join(Platform.pathSeparator)}',
           );
-          await encoder.addFile(
-            source,
-            'data/${entry.path}',
-          );
+          await encoder.addFile(source, 'data/${entry.path}');
         }
       } finally {
         await encoder.close();
       }
 
-      try {
-        await manifestFile.delete();
-        await stateFile.delete();
-        await tempDir.delete(recursive: true);
-      } catch (_) {
-        // فایل‌های موقت در صورت خطای cleanup روی Backup نهایی اثری ندارند.
-      }
-
-      if (!await temp.exists()) {
+      if (!await temp.exists() || await temp.length() <= 0) {
         return const BackupResult(
           success: false,
-          message: 'فایل Backup ساخته نشد.',
+          message: 'فایل Backup موقت ساخته نشد یا صفر بایت است.',
         );
       }
 
       await temp.rename(output.path);
+      temp = null;
 
-      // یک بار فایل نهایی را باز می‌کنیم و ساختار آن را بررسی می‌کنیم.
       final inspection = await inspectBackup(output);
       if (!inspection.valid) {
-        try { await output.delete(); } catch (_) {}
+        if (await output.exists()) await output.delete();
         return BackupResult(
           success: false,
-          message: 'Backup ساخته شد اما اعتبارسنجی آن ناموفق بود: ${inspection.message}',
+          message: 'اعتبارسنجی Backup ناموفق بود: ${inspection.message}',
         );
       }
 
       await prefs.setString(_lastBackupKey, output.path);
-      await prefs.setInt(
-        _lastBackupTimeKey,
-        now.millisecondsSinceEpoch,
-      );
+      await prefs.setInt(_lastBackupTimeKey, now.millisecondsSinceEpoch);
 
       return BackupResult(
         success: true,
@@ -302,124 +262,108 @@ class BackupService {
         totalBytes: totalBytes,
       );
     } catch (e) {
+      if (temp != null && await temp.exists()) {
+        try { await temp.delete(); } catch (_) {}
+      }
       return BackupResult(
         success: false,
         message: 'خطا هنگام ساخت Backup: $e',
       );
+    } finally {
+      if (tempDir != null && await tempDir.exists()) {
+        try { await tempDir.delete(recursive: true); } catch (_) {}
+      }
     }
   }
 
   static Future<BackupInspection> inspectBackup(File backupFile) async {
     try {
       if (!await backupFile.exists()) {
-        return const BackupInspection(
-          valid: false,
-          message: 'فایل Backup وجود ندارد.',
-        );
+        return const BackupInspection(valid: false, message: 'فایل Backup وجود ندارد.');
       }
-
       if (!backupFile.path.toLowerCase().endsWith(backupExtension)) {
-        return const BackupInspection(
-          valid: false,
-          message: 'فرمت فایل Backup معتبر نیست.',
-        );
+        return const BackupInspection(valid: false, message: 'فرمت فایل Backup معتبر نیست.');
+      }
+      if (await backupFile.length() <= 0) {
+        return const BackupInspection(valid: false, message: 'فایل Backup صفر بایت است.');
       }
 
       final input = InputFileStream(backupFile.path);
       try {
         final archive = ZipDecoder().decodeStream(input);
         ArchiveFile? manifestEntry;
-
         for (final entry in archive) {
           if (entry.isFile && entry.name == 'manifest.json') {
             manifestEntry = entry;
             break;
           }
         }
-
         if (manifestEntry == null) {
-          return const BackupInspection(
-            valid: false,
-            message: 'manifest.json در Backup وجود ندارد.',
-          );
+          return const BackupInspection(valid: false, message: 'manifest.json در Backup وجود ندارد.');
         }
 
-        final manifest = jsonDecode(
-          utf8.decode(manifestEntry.readBytes()!.toList()),
-        );
-
-        if (manifest is! Map<String, dynamic> ||
-            manifest['format'] != 'manzelat_backup' ||
-            manifest['version'] != formatVersion) {
-          return const BackupInspection(
-            valid: false,
-            message: 'نسخه یا ساختار Backup پشتیبانی نمی‌شود.',
-          );
+        final decoded = jsonDecode(utf8.decode(manifestEntry.readBytes()!.toList()));
+        if (decoded is! Map<String, dynamic> ||
+            decoded['format'] != 'manzelat_backup' ||
+            decoded['version'] != formatVersion) {
+          return const BackupInspection(valid: false, message: 'نسخه یا ساختار Backup پشتیبانی نمی‌شود.');
         }
 
-        final entries = manifest['entries'];
-        if (entries is! List) {
-          return const BackupInspection(
-            valid: false,
-            message: 'فهرست فایل‌های Backup خراب است.',
-          );
+        final entries = decoded['entries'];
+        if (entries is! List || entries.isEmpty) {
+          return const BackupInspection(valid: false, message: 'Backup هیچ فایل اطلاعاتی ندارد.');
         }
 
-        final archiveNames = archive
-            .where((e) => e.isFile)
-            .map((e) => e.name)
-            .toSet();
+        final archiveNames = archive.where((e) => e.isFile).map((e) => e.name).toSet();
+        var countedBytes = 0;
+        var countedFiles = 0;
 
         for (final item in entries) {
           if (item is! Map) {
-            return const BackupInspection(
-              valid: false,
-              message: 'یکی از رکوردهای Backup نامعتبر است.',
-            );
+            return const BackupInspection(valid: false, message: 'یکی از رکوردهای Backup نامعتبر است.');
           }
-
           final relative = item['path'];
-          if (relative is! String ||
-              relative.isEmpty ||
-              _isUnsafeRelativePath(relative)) {
-            return const BackupInspection(
-              valid: false,
-              message: 'مسیر مشکوک یا نامعتبر داخل Backup پیدا شد.',
-            );
+          final expectedSize = (item['size'] as num?)?.toInt();
+          if (relative is! String || relative.isEmpty || _isUnsafeRelativePath(relative)) {
+            return const BackupInspection(valid: false, message: 'مسیر مشکوک یا نامعتبر داخل Backup پیدا شد.');
           }
-
+          if (expectedSize == null || expectedSize < 0) {
+            return const BackupInspection(valid: false, message: 'حجم یکی از فایل‌های Backup نامعتبر است.');
+          }
           if (!archiveNames.contains('data/$relative')) {
-            return BackupInspection(
-              valid: false,
-              message: 'فایل $relative در آرشیو ناقص است.',
-            );
+            return BackupInspection(valid: false, message: 'فایل $relative در آرشیو ناقص است.');
           }
+          countedFiles++;
+          countedBytes += expectedSize;
+        }
+
+        final manifestCount = (decoded['file_count'] as num?)?.toInt();
+        final manifestBytes = (decoded['total_bytes'] as num?)?.toInt();
+        if (manifestCount != null && manifestCount != countedFiles) {
+          return const BackupInspection(valid: false, message: 'تعداد فایل‌های Backup با manifest یکسان نیست.');
+        }
+        if (manifestBytes != null && manifestBytes != countedBytes) {
+          return const BackupInspection(valid: false, message: 'حجم فایل‌های Backup با manifest یکسان نیست.');
         }
 
         return BackupInspection(
           valid: true,
-          message: 'Backup سالم و قابل Restore است.',
-          fileCount: (manifest['file_count'] as num?)?.toInt() ?? entries.length,
-          totalBytes: (manifest['total_bytes'] as num?)?.toInt() ?? 0,
-          createdAt: DateTime.tryParse(manifest['created_at']?.toString() ?? ''),
-          originalRoot: manifest['original_root']?.toString(),
+          message: 'Backup سالم و قابل Restore/Merge است.',
+          fileCount: countedFiles,
+          totalBytes: countedBytes,
+          createdAt: DateTime.tryParse(decoded['created_at']?.toString() ?? ''),
+          originalRoot: decoded['original_root']?.toString(),
         );
       } finally {
         await input.close();
       }
     } catch (e) {
-      return BackupInspection(
-        valid: false,
-        message: 'فایل Backup خراب یا غیرقابل خواندن است: $e',
-      );
+      return BackupInspection(valid: false, message: 'فایل Backup خراب یا غیرقابل خواندن است: $e');
     }
   }
 
-  /// Restore انتخابی:
-  /// - restoreFiles: تمام فایل‌ها و پوشه‌های اطلاعاتی
-  /// - restoreAppState: وضعیت‌های غیر وابسته به مسیر مثل رسیدها و تاریخ کاری
-  ///
-  /// مسیر storage فعلی کاربر حفظ می‌شود و هرگز از Backup جایگزین نمی‌شود.
+  /// اگر [overwriteExisting] false باشد، Restore به شکل Merge انجام می‌شود:
+  /// فایل‌های جدید اضافه می‌شوند و فایل‌های هم‌مسیر موجود دست‌نخورده می‌مانند.
   static Future<BackupResult> restoreBackup({
     required File backupFile,
     required Directory targetRoot,
@@ -430,21 +374,13 @@ class BackupService {
     try {
       final inspection = await inspectBackup(backupFile);
       if (!inspection.valid) {
-        return BackupResult(
-          success: false,
-          message: inspection.message,
-        );
+        return BackupResult(success: false, message: inspection.message);
       }
-
       if (!restoreFiles && !restoreAppState) {
-        return const BackupResult(
-          success: false,
-          message: 'حداقل یک بخش برای Restore انتخاب کنید.',
-        );
+        return const BackupResult(success: false, message: 'حداقل یک بخش برای Restore انتخاب کنید.');
       }
 
       await targetRoot.create(recursive: true);
-
       final input = InputFileStream(backupFile.path);
       try {
         final archive = ZipDecoder().decodeStream(input);
@@ -454,35 +390,44 @@ class BackupService {
         if (restoreFiles) {
           for (final entry in archive) {
             if (!entry.isFile || !entry.name.startsWith('data/')) continue;
-
             final relative = entry.name.substring('data/'.length);
             if (_isUnsafeRelativePath(relative)) {
-              return const BackupResult(
-                success: false,
-                message: 'Backup شامل مسیر غیرمجاز است و Restore متوقف شد.',
-              );
+              return const BackupResult(success: false, message: 'Backup شامل مسیر غیرمجاز است و Restore متوقف شد.');
             }
 
             final destination = File(
               '${targetRoot.path}${Platform.pathSeparator}'
               '${relative.split('/').join(Platform.pathSeparator)}',
             );
-
-            if (await destination.exists() && !overwriteExisting) {
-              continue;
-            }
+            if (await destination.exists() && !overwriteExisting) continue;
 
             await destination.parent.create(recursive: true);
+            final part = File('${destination.path}.part');
+            if (await part.exists()) await part.delete();
 
-            final output = OutputFileStream(destination.path);
             try {
-              entry.writeContent(output);
-            } finally {
-              output.closeSync();
+              final output = OutputFileStream(part.path);
+              try {
+                entry.writeContent(output);
+              } finally {
+                output.closeSync();
+              }
+              if (!await part.exists() || await part.length() != entry.size) {
+                throw FileSystemException('ذخیره فایل Restore کامل نشد.', part.path);
+              }
+              if (await destination.exists()) await destination.delete();
+              await part.rename(destination.path);
+              if (!await destination.exists() || await destination.length() != entry.size) {
+                throw FileSystemException('تأیید نهایی Restore ناموفق بود.', destination.path);
+              }
+              restoredFiles++;
+              restoredBytes += entry.size;
+            } catch (_) {
+              if (await part.exists()) {
+                try { await part.delete(); } catch (_) {}
+              }
+              rethrow;
             }
-
-            restoredFiles++;
-            restoredBytes += entry.size;
           }
         }
 
@@ -494,51 +439,40 @@ class BackupService {
               break;
             }
           }
-
           if (stateEntry != null) {
-            final decoded = jsonDecode(
-              utf8.decode(stateEntry.readBytes()!.toList()),
-            );
+            final decoded = jsonDecode(utf8.decode(stateEntry.readBytes()!.toList()));
             if (decoded is Map) {
               final prefs = await SharedPreferences.getInstance();
 
-              final receipts = decoded['receipt_keys'];
-              if (receipts is List) {
-                await prefs.setStringList(
-                  'customer_receipt_keys',
-                  receipts.whereType<String>().toList(),
-                );
-              }
+              final backupReceipts = decoded['receipt_keys'] is List
+                  ? (decoded['receipt_keys'] as List).whereType<String>().toSet()
+                  : <String>{};
+              final currentReceipts = prefs.getStringList('customer_receipt_keys')?.toSet() ?? <String>{};
+              final mergedReceipts = {...currentReceipts, ...backupReceipts}.toList()..sort();
+              await prefs.setStringList('customer_receipt_keys', mergedReceipts);
 
-              final workYear = decoded['work_date_year'];
-              final workMonth = decoded['work_date_month'];
-              final workDay = decoded['work_date_day'];
-              if (workYear is num && workMonth is num && workDay is num) {
-                try {
-                  await WorkDateService.setWorkDate(
-                    Jalali(
-                      workYear.toInt(),
-                      workMonth.toInt(),
-                      workDay.toInt(),
-                    ),
-                  );
-                } catch (_) {
-                  // تاریخ Backup نامعتبر است؛ تاریخ فعلی حفظ می‌شود.
+              // در Merge، تاریخ و تنظیمات دستگاه مقصد تغییر نمی‌کنند. در Restore
+              // جایگزین‌کننده، وضعیت Backup اعمال می‌شود.
+              if (overwriteExisting) {
+                final workYear = decoded['work_date_year'];
+                final workMonth = decoded['work_date_month'];
+                final workDay = decoded['work_date_day'];
+                if (workYear is num && workMonth is num && workDay is num) {
+                  try {
+                    await WorkDateService.setWorkDate(
+                      Jalali(workYear.toInt(), workMonth.toInt(), workDay.toInt()),
+                    );
+                  } catch (_) {}
                 }
-              }
 
-              // مسیر ذخیره‌سازی فعلی عمداً دست‌نخورده می‌ماند.
-              final autoEnabled = decoded['auto_backup_enabled'];
-              if (autoEnabled is bool) {
-                await prefs.setBool(_autoEnabledKey, autoEnabled);
-              }
-
-              final interval = decoded['auto_backup_interval_days'];
-              if (interval is num) {
-                await prefs.setInt(
-                  _autoIntervalDaysKey,
-                  interval.toInt().clamp(1, 30).toInt(),
-                );
+                final autoEnabled = decoded['auto_backup_enabled'];
+                if (autoEnabled is bool) {
+                  await prefs.setBool(_autoEnabledKey, autoEnabled);
+                }
+                final interval = decoded['auto_backup_interval_days'];
+                if (interval is num) {
+                  await prefs.setInt(_autoIntervalDaysKey, interval.toInt().clamp(1, 30).toInt());
+                }
               }
             }
           }
@@ -546,7 +480,9 @@ class BackupService {
 
         return BackupResult(
           success: true,
-          message: 'Restore با موفقیت انجام شد.',
+          message: overwriteExisting
+              ? 'Restore با موفقیت انجام شد.'
+              : 'Merge با موفقیت انجام شد؛ اطلاعات موجود حذف نشدند.',
           fileCount: restoredFiles,
           totalBytes: restoredBytes,
         );
@@ -554,17 +490,13 @@ class BackupService {
         await input.close();
       }
     } catch (e) {
-      return BackupResult(
-        success: false,
-        message: 'خطا هنگام Restore: $e',
-      );
+      return BackupResult(success: false, message: 'خطا هنگام Restore/Merge: $e');
     }
   }
 
   static String _timestamp(DateTime date) {
     String two(int v) => v.toString().padLeft(2, '0');
-    return '${date.year}${two(date.month)}${two(date.day)}_'
-        '${two(date.hour)}${two(date.minute)}${two(date.second)}';
+    return '${date.year}${two(date.month)}${two(date.day)}_${two(date.hour)}${two(date.minute)}${two(date.second)}';
   }
 
   static String _relativePath(String root, String path) {
@@ -572,10 +504,9 @@ class BackupService {
     final normalizedPath = path.replaceAll('\\', '/');
     if (normalizedPath == normalizedRoot) return '';
     final prefix = '$normalizedRoot/';
-    if (normalizedPath.startsWith(prefix)) {
-      return normalizedPath.substring(prefix.length);
-    }
-    return normalizedPath.split('/').last;
+    return normalizedPath.startsWith(prefix)
+        ? normalizedPath.substring(prefix.length)
+        : normalizedPath.split('/').last;
   }
 
   static bool _isUnsafeRelativePath(String path) {

@@ -481,25 +481,197 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
     );
   }
 
-  Future<File> _createZipFile(Directory customerFolder) async {
-    final archive = Archive();
+  Future<void> _writeFileSafely(File target, Uint8List bytes) async {
+    final partFile = File('${target.path}.part');
 
-    for (final item in customerFolder.listSync(recursive: false)) {
-      if (item is File && item.lengthSync() > 0) {
-        final Uint8List fileBytes = await item.readAsBytes();
-        final String fileName = item.path.split(Platform.pathSeparator).last;
-        archive.addFile(ArchiveFile(fileName, fileBytes.length, fileBytes));
+    try {
+      if (await partFile.exists()) {
+        await partFile.delete();
       }
+
+      final randomAccessFile = await partFile.open(mode: FileMode.write);
+      try {
+        await randomAccessFile.writeFrom(bytes);
+        await randomAccessFile.flush();
+      } finally {
+        await randomAccessFile.close();
+      }
+
+      if (!await partFile.exists() || await partFile.length() <= 0) {
+        throw Exception('فایل موقت ${target.path} ناقص یا خالی است.');
+      }
+
+      if (await target.exists()) {
+        throw Exception('فایل مقصد از قبل وجود دارد: ${target.path}');
+      }
+
+      await partFile.rename(target.path);
+
+      if (!await target.exists() || await target.length() <= 0) {
+        throw Exception('فایل نهایی ${target.path} به‌درستی ذخیره نشد.');
+      }
+    } catch (_) {
+      if (await partFile.exists()) {
+        await partFile.delete();
+      }
+      if (await target.exists() && await target.length() <= 0) {
+        await target.delete();
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> _writeFilesSafely(List<MapEntry<File, Uint8List>> files) async {
+    final createdFiles = <File>[];
+    final partFiles = <File>[];
+
+    try {
+      for (final entry in files) {
+        final target = entry.key;
+        final partFile = File('${target.path}.part');
+        partFiles.add(partFile);
+        await _writeFileSafely(target, entry.value);
+        createdFiles.add(target);
+      }
+
+      for (final file in createdFiles) {
+        if (!await file.exists() || await file.length() <= 0) {
+          throw Exception('اعتبارسنجی فایل ذخیره‌شده ناموفق بود: ${file.path}');
+        }
+      }
+    } catch (_) {
+      for (final partFile in partFiles) {
+        if (await partFile.exists()) {
+          await partFile.delete();
+        }
+      }
+      for (final file in createdFiles) {
+        if (await file.exists()) {
+          await file.delete();
+        }
+      }
+      rethrow;
+    }
+  }
+
+  Future<File> _createZipFile(Directory customerFolder) async {
+    final inputFiles = <File>[];
+
+    for (final item in await customerFolder.list(recursive: false).toList()) {
+      if (item is! File) continue;
+      if (item.path.endsWith('.part')) {
+        throw Exception('فایل موقت ناقص در پوشه پیدا شد: ${item.path}');
+      }
+
+      if (!await item.exists() || await item.length() <= 0) {
+        throw Exception('فایل ورودی ZIP سالم نیست: ${item.path}');
+      }
+      inputFiles.add(item);
     }
 
-    final List<int>? compressedBytes = ZipEncoder().encode(archive);
-    if (compressedBytes == null) {
-      throw Exception('خطا در فشرده‌سازی و کدگذاری فایل زیپ');
+    if (inputFiles.isEmpty) {
+      throw Exception('هیچ فایل سالمی برای ساخت ZIP وجود ندارد.');
     }
 
     final zipFile = File('${customerFolder.path}.zip');
-    await zipFile.writeAsBytes(compressedBytes, flush: true);
-    return zipFile;
+    final zipPartFile = File('${zipFile.path}.part');
+
+    try {
+      if (await zipPartFile.exists()) {
+        await zipPartFile.delete();
+      }
+
+      final encoder = ZipFileEncoder();
+      encoder.create(zipPartFile.path);
+      try {
+        for (final inputFile in inputFiles) {
+          if (!await inputFile.exists() || await inputFile.length() <= 0) {
+            throw Exception('فایل ورودی هنگام ساخت ZIP دیگر سالم نیست: ${inputFile.path}');
+          }
+          await encoder.addFile(
+            inputFile,
+            inputFile.path.split(Platform.pathSeparator).last,
+          );
+        }
+      } finally {
+        await encoder.close();
+      }
+
+      if (!await zipPartFile.exists() || await zipPartFile.length() <= 0) {
+        throw Exception('فایل ZIP موقت ناقص یا خالی است.');
+      }
+
+      for (final inputFile in inputFiles) {
+        if (!await inputFile.exists() || await inputFile.length() <= 0) {
+          throw Exception('اعتبارسنجی فایل ورودی ZIP ناموفق بود: ${inputFile.path}');
+        }
+      }
+
+      final inputStream = InputFileStream(zipPartFile.path);
+      try {
+        final decodedArchive = ZipDecoder().decodeStream(inputStream);
+        final entries = decodedArchive.where((entry) => entry.isFile).toList();
+
+        if (entries.length != inputFiles.length) {
+          throw Exception('تعداد فایل‌های ZIP با فایل‌های ورودی برابر نیست.');
+        }
+
+        for (final inputFile in inputFiles) {
+          final fileName =
+              inputFile.path.split(Platform.pathSeparator).last;
+          final expectedSize = await inputFile.length();
+          final entry = entries.cast<dynamic>().firstWhere(
+            (item) => item.name == fileName,
+            orElse: () => null,
+          );
+
+          if (entry == null || entry.size != expectedSize) {
+            throw Exception('فایل $fileName داخل ZIP معتبر نیست.');
+          }
+        }
+      } finally {
+        inputStream.close();
+      }
+
+      final backupZip = File('${zipFile.path}.backup');
+      var hadExistingZip = false;
+      try {
+        if (await backupZip.exists()) {
+          await backupZip.delete();
+        }
+        if (await zipFile.exists()) {
+          hadExistingZip = true;
+          await zipFile.rename(backupZip.path);
+        }
+
+        await zipPartFile.rename(zipFile.path);
+
+        if (!await zipFile.exists() || await zipFile.length() <= 0) {
+          throw Exception('فایل ZIP نهایی به‌درستی ذخیره نشد.');
+        }
+
+        if (await backupZip.exists()) {
+          await backupZip.delete();
+        }
+        return zipFile;
+      } catch (_) {
+        if (await zipPartFile.exists()) {
+          await zipPartFile.delete();
+        }
+        if (await zipFile.exists()) {
+          await zipFile.delete();
+        }
+        if (hadExistingZip && await backupZip.exists()) {
+          await backupZip.rename(zipFile.path);
+        }
+        rethrow;
+      }
+    } catch (_) {
+      if (await zipPartFile.exists()) {
+        await zipPartFile.delete();
+      }
+      rethrow;
+    }
   }
 
   Future<void> _showSuccessDialog(String folderPath, File zipFile) async {
@@ -749,7 +921,7 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
                     await customerFolder.create(recursive: true);
                   }
 
-                  final writeOperations = <Future<void>>[];
+                  final filesToWrite = <MapEntry<File, Uint8List>>[];
                   final usedFileNames = <String>{};
 
                   for (final cardData in savedCardsData) {
@@ -763,11 +935,6 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
                       );
                     }
 
-                    // اگر این نام قبلاً روی دیسک وجود داشته باشد (مثلاً از
-                    // قبل، یا از طریق «افزودن عکس») یا در همین دسته‌ی
-                    // ذخیره‌سازی استفاده شده باشد (مثلاً کاربر یک عدد را هم
-                    // برای کد ملی و هم شماره تلفن وارد کرده)، برای جلوگیری
-                    // از بازنویسی و گم‌شدن عکس، یک شماره به آخرش اضافه می‌شود.
                     fileName = StorageService.uniqueFileName(
                       folder: customerFolder,
                       desiredName: fileName,
@@ -775,14 +942,15 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
                     );
                     usedFileNames.add(fileName);
 
-                    writeOperations.add(
-                      File(
-                        '${customerFolder.path}/$fileName.jpg',
-                      ).writeAsBytes(bytes, flush: true),
+                    filesToWrite.add(
+                      MapEntry(
+                        File('${customerFolder.path}/$fileName.jpg'),
+                        bytes,
+                      ),
                     );
                   }
 
-                  await Future.wait(writeOperations);
+                  await _writeFilesSafely(filesToWrite);
 
                   statusNotifier.value = 'در حال ایجاد فایل فشرده ZIP...';
                   final zipFile = await _createZipFile(customerFolder);
