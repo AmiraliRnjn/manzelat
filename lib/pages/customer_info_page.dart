@@ -24,9 +24,23 @@ class _CustomerInfoPageState extends State<CustomerInfoPage> {
 
   static const primaryBlue = Color(0xFF1565C0);
 
+  // برخی کیبوردهای فارسی/عربی روی اندروید ارقام را به‌صورت ۰۱۲۳... یا
+  // ٠١٢٣... ارسال می‌کنند، نه ارقام انگلیسی؛ بدون این تبدیل، اعتبارسنجی
+  // ۱۰ رقمی کد ملی برای این کاربران همیشه رد می‌شود.
+  String _toEnglishDigits(String input) {
+    const persian = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+    const arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+    var result = input;
+    for (var i = 0; i < 10; i++) {
+      result = result.replaceAll(persian[i], '$i');
+      result = result.replaceAll(arabic[i], '$i');
+    }
+    return result;
+  }
+
   void _startProcess() {
     final fullName = fullNameController.text.trim();
-    final nationalCode = nationalCodeController.text.trim();
+    final nationalCode = _toEnglishDigits(nationalCodeController.text.trim());
 
     if (fullName.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(

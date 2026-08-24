@@ -7,6 +7,7 @@ import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'pages/home_page.dart';
 import 'pages/charge_page.dart';
 import 'pages/receipt_target_page.dart';
+import 'services/backup_service.dart';
 //import 'issue_page.dart';
 
 void main() {
@@ -20,14 +21,26 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   StreamSubscription<List<SharedMediaFile>>? _mediaSubscription;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initShareIntentListener();
+    // Backup خودکار: تنظیمات آن در صفحه‌ی Backup ذخیره می‌شود، اما تا
+    // اینجا هیچ‌جا صدا زده نمی‌شد و عملاً هیچ‌وقت اجرا نمی‌شد. حالا هم
+    // موقع باز شدن برنامه و هم موقع برگشتن از پس‌زمینه بررسی می‌شود.
+    BackupService.maybeRunAutoBackup();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      BackupService.maybeRunAutoBackup();
+    }
   }
 
   void _initShareIntentListener() {
@@ -68,6 +81,7 @@ class _MyAppState extends State<MyApp> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _mediaSubscription?.cancel();
     super.dispose();
   }
