@@ -20,11 +20,13 @@ class CustomerInfoPage extends StatefulWidget {
 
 class _CustomerInfoPageState extends State<CustomerInfoPage> {
   final TextEditingController fullNameController = TextEditingController();
+  final TextEditingController nationalCodeController = TextEditingController();
 
   static const primaryBlue = Color(0xFF1565C0);
 
   void _startProcess() {
     final fullName = fullNameController.text.trim();
+    final nationalCode = nationalCodeController.text.trim();
 
     if (fullName.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -44,8 +46,45 @@ class _CustomerInfoPageState extends State<CustomerInfoPage> {
       return;
     }
 
+    if (nationalCode.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'لطفاً کد ملی مشتری را وارد کنید.',
+            textDirection: TextDirection.rtl,
+            style: TextStyle(
+              fontFamily: 'Traffic',
+              fontSize: 15,
+            ),
+          ),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    if (!RegExp(r'^\d{10}$').hasMatch(nationalCode)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'کد ملی باید ۱۰ رقم باشد.',
+            textDirection: TextDirection.rtl,
+            style: TextStyle(
+              fontFamily: 'Traffic',
+              fontSize: 15,
+            ),
+          ),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
     final customer = CustomerData(
       fullName: fullName,
+      nationalCode: nationalCode,
       cards: [],
       operationType: widget.operationType,
     );
@@ -298,6 +337,44 @@ class _CustomerInfoPageState extends State<CustomerInfoPage> {
                                 ),
                               ),
                             ),
+                            const SizedBox(height: 14),
+                            TextField(
+                              controller: nationalCodeController,
+                              textDirection: TextDirection.rtl,
+                              textAlign: TextAlign.right,
+                              keyboardType: TextInputType.number,
+                              maxLength: 10,
+                              textInputAction: TextInputAction.done,
+                              onSubmitted: (_) => _startProcess(),
+                              decoration: InputDecoration(
+                                labelText: 'کد ملی',
+                                hintText: 'مثال: ۱۲۳۴۵۶۷۸۹۰',
+                                counterText: '',
+                                prefixIcon: const Icon(
+                                  Icons.badge_outlined,
+                                  color: primaryBlue,
+                                ),
+                                filled: true,
+                                fillColor: const Color(0xFFF8FAFF),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(17),
+                                  borderSide: BorderSide.none,
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(17),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFFE2E8F0),
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(17),
+                                  borderSide: const BorderSide(
+                                    color: primaryBlue,
+                                    width: 1.5,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -392,7 +469,7 @@ Container(
   @override
   void dispose() {
     fullNameController.dispose();
+    nationalCodeController.dispose();
     super.dispose();
   }
 }
-

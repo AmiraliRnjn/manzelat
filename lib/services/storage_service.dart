@@ -19,6 +19,7 @@ class StorageService {
   static Future<Directory?> getCustomerFolder({
     required OperationType operationType,
     required String customerFullName,
+    String? nationalCode,
   }) async {
     final rootPath = await StorageSettingsService.getStoragePath();
 
@@ -36,6 +37,7 @@ class StorageService {
     final dayFolderName = WorkDateService.folderNameFor(workDate);
 
     final customerFolderName = _sanitize(customerFullName);
+    final sanitizedCode = (nationalCode ?? '').trim();
 
     final dayPath = [
       rootPath,
@@ -48,8 +50,22 @@ class StorageService {
     final dayDirectory = Directory(dayPath);
     await dayDirectory.create(recursive: true);
 
-    // تصمیم نهایی: هر اجرای مشتری باید پوشه‌ی مستقل داشته باشد.
-    // بنابراین حتی اگر نام تکراری باشد، اطلاعات نفر دوم با نفر اول ادغام نمی‌شود.
+    // اگر کد ملی داریم، همان شناسه‌ی یکتای سراسری مشتری است؛ پوشه بر
+    // اساس «نام + کد ملی» ساخته می‌شود. این‌طور حتی بین چند گوشی جدا،
+    // دو مشتری هم‌نام هرگز در یک پوشه ادغام نمی‌شوند و در Merge با هم
+    // قاطی نمی‌شوند، ولی همان مشتری (همان کد ملی) همیشه به همان پوشه
+    // می‌رسد.
+    if (sanitizedCode.isNotEmpty) {
+      final folderName = '${customerFolderName}_${_sanitize(sanitizedCode)}';
+      final candidatePath = [dayPath, folderName].join(Platform.pathSeparator);
+      final candidate = Directory(candidatePath);
+      await candidate.create(recursive: true);
+      return candidate;
+    }
+
+    // Fallback قدیمی (فقط برای جریان‌هایی که کد ملی ندارند): هر اجرا
+    // پوشه‌ی مستقل خودش را می‌گیرد تا اطلاعات نفر دوم با نفر اول
+    // ادغام نشود.
     var folderName = customerFolderName;
     var counter = 1;
 

@@ -296,7 +296,9 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
     initializeCamera();
 
     if (widget.customer.cards.contains(CardType.national)) {
-      textControllers[CardType.national] = TextEditingController();
+      textControllers[CardType.national] = TextEditingController(
+        text: widget.customer.nationalCode,
+      );
     }
     final phoneCard = _phoneNumberCardType;
     if (phoneCard != null) {
@@ -904,6 +906,7 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
                   final customerFolder = await StorageService.getCustomerFolder(
                     operationType: widget.customer.operationType,
                     customerFullName: widget.customer.fullName,
+                    nationalCode: widget.customer.nationalCode,
                   );
 
                   if (customerFolder == null) {

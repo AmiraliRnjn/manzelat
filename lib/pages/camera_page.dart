@@ -337,7 +337,9 @@ bool isTakingPicture = false;
     textControllers[CardType.ticket] = TextEditingController(
       text: widget.customer.ticketNumber ?? '',
     );
-    textControllers[CardType.national] = TextEditingController();
+    textControllers[CardType.national] = TextEditingController(
+      text: widget.customer.nationalCode,
+    );
     textControllers[CardType.manzelat] = TextEditingController();
 
     // برای دسته‌های جدید، کنترلر مدرک مخصوص شماره تلفن همان دسته را هم می‌سازیم.
@@ -937,6 +939,7 @@ Future<void> takePicture() async {
                           await StorageService.getCustomerFolder(
                             operationType: widget.customer.operationType,
                             customerFullName: widget.customer.fullName,
+                            nationalCode: widget.customer.nationalCode,
                           );
 
                       if (customerFolder == null) {
@@ -1619,4 +1622,3 @@ Future<void> takePicture() async {
     super.dispose();
   }
 }
-
