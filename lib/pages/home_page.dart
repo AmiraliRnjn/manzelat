@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:manzelat/pages/charge_category_page.dart';
 import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import 'settings_page.dart';
+import 'search_page.dart';
 import 'issue_category_page.dart';
 import 'file_manager_page.dart';
 import '../services/work_date_service.dart';
@@ -107,6 +108,13 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  void _openSearch() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const SearchPage()),
+    );
+  }
+
   void _openSettings() {
     Navigator.push(
       context,
@@ -119,9 +127,9 @@ class _HomePageState extends State<HomePage> {
   Widget _buildHeader() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 30, 24, 30),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
+      padding: const EdgeInsets.fromLTRB(24, 34, 24, 34),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
           colors: [
@@ -129,32 +137,111 @@ class _HomePageState extends State<HomePage> {
             Color(0xFF1976D2),
           ],
         ),
-        borderRadius: BorderRadius.only(
+        borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(42),
           bottomRight: Radius.circular(42),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF1565C0).withOpacity(0.22),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
+      child: Stack(
+        alignment: Alignment.center,
         children: [
-          Text(
-            'متروا',
-            textDirection: TextDirection.rtl,
-            style: TextStyle(
-              color: Colors.white,
-              fontFamily: 'Traffic',
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
+          // دایره‌های خیلی کم‌رنگ برای ظاهر مدرن‌تر هدر
+          Positioned(
+            top: -48,
+            left: -35,
+            child: Container(
+              width: 125,
+              height: 125,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.055),
+              ),
             ),
           ),
-          SizedBox(height: 8),
-          Text(
-            'سلام در خدمت هستم 👋',
-            textDirection: TextDirection.rtl,
-            style: TextStyle(
-              color: Colors.white,
-              fontFamily: 'Traffic',
-              fontSize: 21,
+          Positioned(
+            bottom: -62,
+            right: -25,
+            child: Container(
+              width: 145,
+              height: 145,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.045),
+              ),
+            ),
+          ),
+
+          // عنوان دقیقاً وسط هدر
+          const Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                'متروا',
+                textDirection: TextDirection.rtl,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontFamily: 'Traffic',
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'سلام در خدمت هستم 👋',
+                textDirection: TextDirection.rtl,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontFamily: 'Traffic',
+                  fontSize: 21,
+                ),
+              ),
+            ],
+          ),
+
+          // دکمه جستجو در گوشه بالای سمت راست
+          Positioned(
+            top: 0,
+            right: 0,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: _openSearch,
+                customBorder: const CircleBorder(),
+                child: Ink(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withOpacity(0.16),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.24),
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.10),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.search_rounded,
+                    color: Colors.white,
+                    size: 29,
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -271,7 +358,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                 const SizedBox(width: 8),
                 const Padding(
-                  padding: EdgeInsets.only(top: 3),
+                  padding: EdgeInsets.only(top: 15),
                   child: Icon(
                     Icons.edit_calendar_outlined,
                     color: primaryBlue,
@@ -451,8 +538,10 @@ class _HomePageState extends State<HomePage> {
                     // بنابراین با بزرگ شدن متن هشدار، صفحه به هم نمی‌ریزد.
                     _buildActiveDateCard(),
               
-                    const SizedBox(height: 22),
-              
+                    const SizedBox(height: 14),
+
+                    
+
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Column(

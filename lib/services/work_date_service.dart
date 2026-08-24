@@ -39,6 +39,25 @@ class WorkDateService {
 
   }
 
+  /// Restore داخلی از Backup. مقدار ورودی با قالب پیش‌فرض Jalali.toString
+  /// خوانده می‌شود و فقط سال/ماه/روز را اعمال می‌کند.
+  static Future<void> setWorkDateFromString(String value) async {
+    final match = RegExp(r'(\d{4})/(\d{1,2})/(\d{1,2})').firstMatch(value);
+    if (match == null) return;
+
+    final year = int.tryParse(match.group(1)!);
+    final month = int.tryParse(match.group(2)!);
+    final day = int.tryParse(match.group(3)!);
+
+    if (year == null || month == null || day == null) return;
+
+    try {
+      await setWorkDate(Jalali(year, month, day));
+    } catch (_) {
+      // داده‌ی Backup نامعتبر است؛ تاریخ فعلی دست‌نخورده می‌ماند.
+    }
+  }
+
   /// نام پوشه‌ی روز را می‌سازد. مثلاً برای 1405/05/03 → "14050503"
   /// (سال ۴ رقمی، ماه و روز هرکدام ۲ رقمی، پشت سر هم).
   static String folderNameFor(Jalali date) {
