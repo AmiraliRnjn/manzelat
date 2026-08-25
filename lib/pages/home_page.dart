@@ -1,3 +1,4 @@
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:manzelat/pages/charge_category_page.dart';
@@ -7,6 +8,8 @@ import 'search_page.dart';
 import 'issue_category_page.dart';
 import 'file_manager_page.dart';
 import '../services/work_date_service.dart';
+import '../services/worker_selection_service.dart';
+import '../services/storage_settings_service.dart';
 import '../app_enum.dart';
 
 class HomePage extends StatefulWidget {
@@ -23,6 +26,7 @@ class _HomePageState extends State<HomePage> {
 
   Jalali? workDate;
   int currentIndex = 0;
+  String? selectedWorker;
 
   @override
   void initState() {
@@ -37,6 +41,21 @@ class _HomePageState extends State<HomePage> {
 
     setState(() {
       workDate = date;
+    });
+
+    await _loadWorkerForCurrentDate();
+  }
+
+  /// نام کاربر ثبت‌شده برای تاریخ فعال فعلی را می‌خواند (اگر کسی انتخاب
+  /// نشده باشد، null است و آیکون آدمک قرمز می‌ماند).
+  Future<void> _loadWorkerForCurrentDate() async {
+    final date = workDate ?? Jalali.now();
+    final worker = await WorkerSelectionService.getWorkerForDate(date);
+
+    if (!mounted) return;
+
+    setState(() {
+      selectedWorker = worker;
     });
   }
 
@@ -57,6 +76,148 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       workDate = picked;
     });
+
+    await _loadWorkerForCurrentDate();
+  }
+
+  /// نام کاربری که امروز کار می‌کند را می‌گیرد و برای تاریخ فعال ذخیره
+  /// می‌کند؛ اگر پوشه‌ی آن روز از قبل ساخته شده باشد، نامش را هم به‌روز
+  /// می‌کند تا معلوم شود آن روز چه کسی کار کرده.
+  Future<void> _selectWorker() async {
+    final controller = TextEditingController(text: selectedWorker ?? '');
+
+    final input = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          title: const Text(
+            'کاربر امروز',
+            textDirection: TextDirection.rtl,
+            style: TextStyle(
+              fontFamily: 'Traffic',
+              fontWeight: FontWeight.bold,
+              fontSize: 19,
+            ),
+          ),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            textDirection: TextDirection.rtl,
+            style: const TextStyle(fontFamily: 'Traffic'),
+            decoration: InputDecoration(
+              hintText: 'نام کاربری که امروز کار می‌کند',
+              hintTextDirection: TextDirection.rtl,
+              filled: true,
+              fillColor: const Color(0xFFF7F8FB),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: const BorderSide(color: Color(0xFFE3E6EC)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: const BorderSide(color: Color(0xFFE3E6EC)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: const BorderSide(color: primaryBlue, width: 1.5),
+              ),
+            ),
+          ),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text(
+                'انصراف',
+                style: TextStyle(fontFamily: 'Traffic'),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(dialogContext, controller.text),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryBlue,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              child: const Text(
+                'تایید',
+                style: TextStyle(fontFamily: 'Traffic'),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    final name = input?.trim();
+    if (name == null || name.isEmpty) return;
+
+    final date = workDate ?? Jalali.now();
+    await WorkerSelectionService.setWorkerForDate(date, name);
+    await _renameExistingDayFolders(date, name);
+
+    if (!mounted) return;
+
+    setState(() {
+      selectedWorker = name;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'کاربر «$name» برای این تاریخ ثبت شد.',
+          style: const TextStyle(fontFamily: 'Traffic'),
+        ),
+      ),
+    );
+  }
+
+  /// اگر پوشه‌ی روز (شارژ و/یا صدور) از قبل بدون نام کاربر ساخته شده
+  /// باشد، همین الان آن را با نام جدید (شامل نام کاربر) تغییر نام
+  /// می‌دهد تا مشتری‌های قبل و بعد از انتخاب کاربر، همگی در یک پوشه
+  /// بمانند.
+  Future<void> _renameExistingDayFolders(Jalali date, String worker) async {
+    final rootPath = await StorageSettingsService.getStoragePath();
+    if (rootPath == null || rootPath.trim().isEmpty) return;
+
+    final baseDayName = WorkDateService.folderNameFor(date);
+    final suffixedDayName = await WorkerSelectionService.resolveDayFolderName(
+      date,
+    );
+
+    if (suffixedDayName == baseDayName) return;
+
+    for (final operationFolderName in ['شارژ', 'صدور']) {
+      final parentPath = [
+        rootPath,
+        operationFolderName,
+        date.year.toString(),
+        date.month.toString().padLeft(2, '0'),
+      ].join(Platform.pathSeparator);
+
+      final oldDir = Directory(
+        [parentPath, baseDayName].join(Platform.pathSeparator),
+      );
+      final newDir = Directory(
+        [parentPath, suffixedDayName].join(Platform.pathSeparator),
+      );
+
+      if (await oldDir.exists() && !await newDir.exists()) {
+        try {
+          await oldDir.rename(newDir.path);
+        } catch (_) {
+          // اگر تغییر نام با خطا مواجه شود، پوشه با نام قبلی باقی می‌ماند
+          // و همچنان قابل استفاده است؛ فقط نام کاربر کنارش نوشته نشده.
+        }
+      }
+    }
   }
 
   bool _isToday() {
@@ -207,6 +368,53 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
             ],
+          ),
+
+          // آیکون آدمک در گوشه بالای سمت چپ: کاربر ثبت‌کننده‌ی امروز را
+          // مشخص می‌کند. تا وقتی کسی انتخاب نشده قرمز است.
+          Positioned(
+            top: 0,
+            left: 0,
+            child: Tooltip(
+              message: selectedWorker == null
+                  ? 'کاربر امروز هنوز انتخاب نشده'
+                  : 'کاربر امروز: $selectedWorker',
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _selectWorker,
+                  customBorder: const CircleBorder(),
+                  child: Ink(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: selectedWorker == null
+                          ? Colors.red.withOpacity(0.78)
+                          : Colors.white.withOpacity(0.16),
+                      border: Border.all(
+                        color: selectedWorker == null
+                            ? Colors.red
+                            : Colors.white.withOpacity(0.24),
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.10),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.person_rounded,
+                      color: Colors.white,
+                      size: 29,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
 
           // دکمه جستجو در گوشه بالای سمت راست
@@ -652,6 +860,3 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
-
-
-

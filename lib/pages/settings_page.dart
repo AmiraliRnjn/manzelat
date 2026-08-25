@@ -1,4 +1,4 @@
-
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import '../services/storage_settings_service.dart';
@@ -28,6 +28,7 @@ class _SettingsPageState extends State<SettingsPage>
   bool isLoading = true;
   bool hasPermission = false;
   Jalali? workDate;
+  int? systemNumber;
 
   @override
   void initState() {
@@ -57,6 +58,7 @@ class _SettingsPageState extends State<SettingsPage>
     final path = await StorageSettingsService.getStoragePath();
     final permission = await PermissionService.hasStoragePermission();
     final date = await WorkDateService.getWorkDate();
+    final number = await StorageSettingsService.getSystemNumber();
 
     if (!mounted) return;
 
@@ -64,6 +66,7 @@ class _SettingsPageState extends State<SettingsPage>
       pathController.text = path ?? '';
       hasPermission = permission;
       workDate = date;
+      systemNumber = number;
       isLoading = false;
     });
   }
@@ -106,6 +109,108 @@ class _SettingsPageState extends State<SettingsPage>
     setState(() {
       workDate = picked;
     });
+  }
+
+  /// یک انتخاب‌گر کرکره‌ای (چرخشی) برای عدد ۱ تا ۵ نشان می‌دهد. عددی که
+  /// انتخاب می‌شود، تا وقتی دوباره عوض نشود همان باقی می‌ماند — درست مثل
+  /// مسیر ذخیره‌سازی.
+  Future<void> _pickSystemNumber() async {
+    final current = systemNumber ?? 1;
+    var tempSelection = current;
+
+    final selected = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'انتخاب شماره سیستم یا موبایل',
+                  style: TextStyle(
+                    color: darkText,
+                    fontFamily: 'Traffic',
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                SizedBox(
+                  height: 170,
+                  child: CupertinoPicker(
+                    scrollController: FixedExtentScrollController(
+                      initialItem: current - 1,
+                    ),
+                    itemExtent: 42,
+                    onSelectedItemChanged: (index) {
+                      tempSelection = index + 1;
+                    },
+                    children: List.generate(5, (index) {
+                      return Center(
+                        child: Text(
+                          '${index + 1}',
+                          style: const TextStyle(
+                            fontFamily: 'Traffic',
+                            fontSize: 20,
+                            color: darkText,
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () =>
+                        Navigator.pop(sheetContext, tempSelection),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryBlue,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                    ),
+                    child: const Text(
+                      'تایید',
+                      style: TextStyle(fontFamily: 'Traffic'),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (selected == null) return;
+
+    await StorageSettingsService.setSystemNumber(selected);
+
+    if (!mounted) return;
+
+    setState(() {
+      systemNumber = selected;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'شماره سیستم با موفقیت ذخیره شد.',
+          style: TextStyle(fontFamily: 'Traffic'),
+        ),
+      ),
+    );
   }
 
   Future<void> _pickFolder() async {
@@ -438,6 +543,69 @@ class _SettingsPageState extends State<SettingsPage>
                                         ),
                                       ),
                                     ],
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            const SizedBox(height: 28),
+                            const _SectionTitle(
+                              title: 'شماره سیستم یا موبایل',
+                              icon: Icons.smartphone_rounded,
+                            ),
+                            const SizedBox(height: 12),
+
+                            _SettingsPanel(
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 56,
+                                    height: 56,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFEAF2FF),
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: const Icon(
+                                      Icons.smartphone_rounded,
+                                      color: primaryBlue,
+                                      size: 30,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 15),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'شماره فعال',
+                                          style: TextStyle(
+                                            color: darkText,
+                                            fontFamily: 'Traffic',
+                                            fontSize: 17,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 5),
+                                        Text(
+                                          systemNumber != null
+                                              ? 'شماره $systemNumber'
+                                              : 'هنوز شماره‌ای انتخاب نشده است.',
+                                          style: const TextStyle(
+                                            color: secondaryText,
+                                            fontFamily: 'Traffic',
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  IconButton(
+                                    onPressed: _pickSystemNumber,
+                                    icon: const Icon(
+                                      Icons.edit_rounded,
+                                      color: primaryBlue,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -874,6 +1042,3 @@ class _BottomNavItem extends StatelessWidget {
     );
   }
 }
-
-
-

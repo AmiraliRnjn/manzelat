@@ -1,4 +1,3 @@
-
 import 'dart:convert';
 import 'dart:io';
 
@@ -548,6 +547,3 @@ class _BackupEntry {
         'modified': modified,
       };
 }
-
-
-

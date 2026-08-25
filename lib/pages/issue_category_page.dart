@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'issue_customer_info_page.dart';
 
@@ -211,7 +210,3 @@ class _CategoryCard extends StatelessWidget {
     );
   }
 }
-
-
-
-

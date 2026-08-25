@@ -1,4 +1,3 @@
-
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -8,6 +7,7 @@ import '../app_enum.dart';
 import 'customer_status_service.dart';
 import 'storage_settings_service.dart';
 import 'work_date_service.dart';
+import 'worker_selection_service.dart';
 
 /// مدیریت مسیرها و فایل‌های مشتری.
 ///
@@ -22,12 +22,19 @@ class FileManagerService {
     final operationFolderName =
         operationType == OperationType.charge ? 'شارژ' : 'صدور';
 
+    // اگر برای این روز کاربری انتخاب شده باشد، نام پوشه باید همان نام
+    // نهایی (به‌همراه نام کاربر) باشد تا با پوشه‌ای که StorageService
+    // ساخته، هماهنگ بماند.
+    final dayFolderName = await WorkerSelectionService.resolveDayFolderName(
+      workDate,
+    );
+
     final dayPath = [
       rootPath,
       operationFolderName,
       workDate.year.toString(),
       workDate.month.toString().padLeft(2, '0'),
-      WorkDateService.folderNameFor(workDate),
+      dayFolderName,
     ].join(Platform.pathSeparator);
 
     return Directory(dayPath);
@@ -282,6 +289,3 @@ class FileManagerService {
     }
   }
 }
-
-
-

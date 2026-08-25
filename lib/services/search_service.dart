@@ -1,4 +1,3 @@
-
 import 'dart:io';
 
 import '../services/storage_settings_service.dart';
@@ -128,7 +127,7 @@ class SearchService {
         (parts.first == 'شارژ' || parts.first == 'صدور') &&
         _isFourDigit(parts[1]) &&
         _isTwoDigit(parts[2]) &&
-        _isEightDigit(parts[3]);
+        _isDayFolder(parts[3]);
   }
 
   static (String?, String?) _customerInfo(Directory directory) {
@@ -146,9 +145,11 @@ class SearchService {
   }
 
   static String? _formatDate(String year, String month, String day) {
-    if (!_isFourDigit(year) || !_isTwoDigit(month) || !_isEightDigit(day)) {
+    if (!_isFourDigit(year) || !_isTwoDigit(month) || !_isDayFolder(day)) {
       return null;
     }
+    // پوشه‌ی روز ممکن است با نام کاربر انتخاب‌شده هم‌راه باشد
+    // (مثلاً «14050101 - علی»)؛ فقط ۸ رقم اول تاریخ واقعی است.
     return '$year/$month/${day.substring(6, 8)}';
   }
 
@@ -171,8 +172,8 @@ class SearchService {
 
   static bool _isFourDigit(String value) => RegExp(r'^\d{4}$').hasMatch(value);
   static bool _isTwoDigit(String value) => RegExp(r'^\d{2}$').hasMatch(value);
-  static bool _isEightDigit(String value) => RegExp(r'^\d{8}$').hasMatch(value);
+
+  // پوشه‌ی روز با ۸ رقم شروع می‌شود؛ اگر کاربری برای آن روز انتخاب شده
+  // باشد، ادامه‌ی نام (مثلاً « - علی») هم مجاز است.
+  static bool _isDayFolder(String value) => RegExp(r'^\d{8}').hasMatch(value);
 }
-
-
-

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'storage_settings_service.dart';
 import 'work_date_service.dart';
+import 'worker_selection_service.dart';
 import '../app_enum.dart';
 
 /// مسئول ساخت مسیر و پوشه‌ی مخصوص هر مشتری، بر اساس:
@@ -43,10 +44,22 @@ class StorageService {
 
     final yearFolderName = workDate.year.toString();
     final monthFolderName = workDate.month.toString().padLeft(2, '0');
-    final dayFolderName = WorkDateService.folderNameFor(workDate);
+    // اگر برای این روز کاربری انتخاب شده باشد، نامش کنار تاریخ می‌آید
+    // (مثلاً «14050101 - علی») تا معلوم شود آن روز چه کسی کار کرده.
+    final dayFolderName = await WorkerSelectionService.resolveDayFolderName(
+      workDate,
+    );
 
     final customerFolderName = _sanitize(customerFullName);
     final sanitizedCode = (nationalCode ?? '').trim();
+
+    // شماره‌ی سیستم/موبایل انتخاب‌شده در تنظیمات، به‌صورت پسوند «م<عدد>»
+    // به آخر نام پوشه‌ی هر مشتری اضافه می‌شود (مثال: «م۱» یا «م۲»). اگر
+    // هنوز شماره‌ای انتخاب نشده باشد، هیچ پسوندی اضافه نمی‌شود.
+    final systemNumber = await StorageSettingsService.getSystemNumber();
+    final systemSuffix = systemNumber == null
+        ? ''
+        : 'م${_toPersianDigits(systemNumber)}';
 
     final dayPath = [
       rootPath,
@@ -65,7 +78,8 @@ class StorageService {
     // قاطی نمی‌شوند، ولی همان مشتری (همان کد ملی) همیشه به همان پوشه
     // می‌رسد.
     if (sanitizedCode.isNotEmpty) {
-      final folderName = '${customerFolderName}_${_sanitize(sanitizedCode)}';
+      var folderName = '${customerFolderName}_${_sanitize(sanitizedCode)}';
+      if (systemSuffix.isNotEmpty) folderName = '${folderName}_$systemSuffix';
       final candidatePath = [dayPath, folderName].join(Platform.pathSeparator);
       final candidate = Directory(candidatePath);
       await candidate.create(recursive: true);
@@ -75,7 +89,9 @@ class StorageService {
     // Fallback قدیمی (فقط برای جریان‌هایی که کد ملی ندارند): هر اجرا
     // پوشه‌ی مستقل خودش را می‌گیرد تا اطلاعات نفر دوم با نفر اول
     // ادغام نشود.
-    var folderName = customerFolderName;
+    var folderName = systemSuffix.isEmpty
+        ? customerFolderName
+        : '${customerFolderName}_$systemSuffix';
     var counter = 1;
 
     while (true) {
@@ -92,8 +108,20 @@ class StorageService {
       }
 
       counter++;
-      folderName = '${customerFolderName}_$counter';
+      folderName = systemSuffix.isEmpty
+          ? '${customerFolderName}_$counter'
+          : '${customerFolderName}_${counter}_$systemSuffix';
     }
+  }
+
+  /// عدد ۱ تا ۵ را به رقم فارسی تبدیل می‌کند (مثلاً 2 → «۲»).
+  static String _toPersianDigits(int number) {
+    const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+    return number
+        .toString()
+        .split('')
+        .map((digit) => persianDigits[int.parse(digit)])
+        .join();
   }
 
   /// اگر فایل «.nomedia» در ریشه‌ی مسیر ذخیره‌سازی وجود نداشته باشد،

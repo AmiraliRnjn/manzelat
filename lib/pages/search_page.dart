@@ -1,8 +1,13 @@
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
+import 'package:share_plus/share_plus.dart';
 
+import '../services/customer_status_service.dart';
+import '../services/file_manager_service.dart';
 import '../services/search_service.dart';
+import 'file_manager_page.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -64,44 +69,348 @@ class _SearchPageState extends State<SearchPage> {
     });
   }
 
+  /// دوباره همان جستجوی آخر را اجرا می‌کند؛ بعد از رنیم/حذف/زیپ لازم است
+  /// تا لیست نتایج با وضعیت جدید فایل‌ها هماهنگ بماند.
+  Future<void> _refreshResults() async {
+    if (_lastQuery.isEmpty) return;
+    final request = ++_requestId;
+    final results = await SearchService.search(_lastQuery);
+    if (!mounted || request != _requestId) return;
+    setState(() => _results = results);
+  }
+
   Future<void> _openResult(SearchResult result) async {
     if (result.isDirectory) {
-      await _showPathDialog(result);
+      // درست مثل جستجوی داخل پوشه‌ها (صفحه‌ی مدیریت فایل): باز کردن یک
+      // نتیجه‌ی پوشه، مستقیماً محتوای همان پوشه‌ی مشتری را نشان می‌دهد.
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => FolderContentsPage(folder: Directory(result.path)),
+        ),
+      );
       return;
     }
 
-    try {
-      await OpenFilex.open(result.path);
-    } catch (_) {
-      if (mounted) await _showPathDialog(result);
+    final openResult = await OpenFilex.open(result.path);
+    if (openResult.type != ResultType.done) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'برنامه‌ای برای باز کردن این فایل پیدا نشد: ${openResult.message}',
+          ),
+        ),
+      );
     }
   }
 
-  Future<void> _showPathDialog(SearchResult result) {
-    return showDialog<void>(
+  // ------------------------------- اکشن‌های پوشه -------------------------------
+
+  Future<void> _renameFolder(SearchResult result) async {
+    final folder = Directory(result.path);
+    final oldName = FileManagerService.displayName(folder);
+    final input = await _askForName(title: 'تغییر نام پوشه', initialValue: oldName);
+
+    if (input == null || input.trim().isEmpty || input.trim() == oldName) return;
+
+    try {
+      final renamedFolder =
+          await FileManagerService.rename(folder, input.trim()) as Directory;
+      final newName = FileManagerService.displayName(renamedFolder);
+
+      await CustomerStatusService.transfer(folder.path, renamedFolder.path);
+
+      final parentPath = renamedFolder.parent.path;
+      final matchingZip = File(
+        [parentPath, '$oldName.zip'].join(Platform.pathSeparator),
+      );
+      if (await matchingZip.exists()) {
+        await FileManagerService.rename(matchingZip, newName);
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('نام پوشه با موفقیت تغییر کرد.')),
+      );
+      await _refreshResults();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('خطا در تغییر نام: $e')));
+    }
+  }
+
+  Future<void> _zipFolder(SearchResult result) async {
+    final folder = Directory(result.path);
+    final name = FileManagerService.displayName(folder);
+    final parentPath = folder.parent.path;
+    final existingZip = File(
+      [parentPath, '$name.zip'].join(Platform.pathSeparator),
+    );
+
+    if (await existingZip.exists()) {
+      final confirmed = await _confirmAction(
+        title: 'بازنویسی ZIP',
+        message: 'فایل ZIP «$name» از قبل وجود دارد. با نسخه‌ی جدید جایگزین شود؟',
+        confirmLabel: 'بازنویسی',
+      );
+      if (confirmed != true) return;
+    }
+
+    try {
+      await FileManagerService.zipCustomerFolder(folder);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('فایل ZIP با موفقیت ساخته شد.')),
+      );
+      await _refreshResults();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('ساخت ZIP با خطا مواجه شد: $e')));
+    }
+  }
+
+  Future<void> _deleteFolder(SearchResult result) async {
+    final folder = Directory(result.path);
+    final confirmed = await _confirmAction(
+      title: 'حذف پوشه',
+      message:
+          'پوشه‌ی «${FileManagerService.displayName(folder)}» و تمام فایل‌های داخل آن برای همیشه حذف می‌شود. مطمئن هستید؟',
+      confirmLabel: 'حذف',
+      danger: true,
+    );
+    if (confirmed != true) return;
+
+    try {
+      await FileManagerService.delete(folder);
+      await CustomerStatusService.clearAll(folder.path);
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('پوشه حذف شد.')));
+      await _refreshResults();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('خطا در حذف: $e')));
+    }
+  }
+
+  Future<void> _shareFolder(SearchResult result) async {
+    final folder = Directory(result.path);
+    final files = FileManagerService.getFilesInFolder(folder);
+
+    if (files.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('این پوشه فایلی برای اشتراک‌گذاری ندارد.')),
+      );
+      return;
+    }
+
+    final shareResult = await Share.shareXFiles(
+      files.map((f) => XFile(f.path)).toList(),
+      subject: FileManagerService.displayName(folder),
+    );
+
+    if (shareResult.status != ShareResultStatus.success) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('اشتراک‌گذاری لغو شد و وضعیت مشتری تغییر نکرد.')),
+      );
+      return;
+    }
+
+    await CustomerStatusService.markSent(folder.path);
+  }
+
+  // -------------------------------- اکشن‌های ZIP --------------------------------
+
+  Future<void> _renameZip(SearchResult result) async {
+    final zip = File(result.path);
+    final currentName = FileManagerService.displayName(zip);
+    final input = await _askForName(title: 'تغییر نام ZIP', initialValue: currentName);
+
+    if (input == null || input.trim().isEmpty || input.trim() == currentName) return;
+
+    try {
+      final renamedZip = await FileManagerService.rename(zip, input.trim()) as File;
+      await CustomerStatusService.transfer(zip.path, renamedZip.path);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('نام فایل با موفقیت تغییر کرد.')),
+      );
+      await _refreshResults();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('خطا در تغییر نام: $e')));
+    }
+  }
+
+  Future<void> _deleteZip(SearchResult result) async {
+    final zip = File(result.path);
+    final confirmed = await _confirmAction(
+      title: 'حذف فایل ZIP',
+      message:
+          'فایل «${FileManagerService.displayName(zip)}» برای همیشه حذف می‌شود. مطمئن هستید؟',
+      confirmLabel: 'حذف',
+      danger: true,
+    );
+    if (confirmed != true) return;
+
+    try {
+      await FileManagerService.delete(zip);
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('فایل حذف شد.')));
+      await _refreshResults();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('خطا در حذف: $e')));
+    }
+  }
+
+  Future<void> _shareZip(SearchResult result) async {
+    final zip = File(result.path);
+    final shareResult = await Share.shareXFiles(
+      [XFile(zip.path)],
+      subject: FileManagerService.displayName(zip),
+    );
+
+    if (shareResult.status != ShareResultStatus.success) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('اشتراک‌گذاری لغو شد و وضعیت مشتری تغییر نکرد.')),
+      );
+      return;
+    }
+
+    await CustomerStatusService.markSent(zip.path);
+  }
+
+  // ----------------------------- دیالوگ‌های مشترک -----------------------------
+
+  Future<String?> _askForName({
+    required String title,
+    required String initialValue,
+  }) async {
+    final controller = TextEditingController(text: initialValue);
+
+    return showDialog<String>(
       context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Text(
-          result.title,
-          textDirection: TextDirection.rtl,
-          style: const TextStyle(
-            fontFamily: 'Traffic',
-            fontWeight: FontWeight.bold,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Text(
+            title,
+            textDirection: TextDirection.rtl,
+            style: const TextStyle(
+              fontFamily: 'Traffic',
+              color: darkText,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-        ),
-        content: Text(
-          result.path,
-          textDirection: TextDirection.ltr,
-          style: const TextStyle(fontSize: 12, height: 1.7),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('بستن', style: TextStyle(fontFamily: 'Traffic')),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            textDirection: TextDirection.rtl,
+            style: const TextStyle(fontFamily: 'Traffic'),
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: const Color(0xFFF7F8FB),
+              hintText: 'نام جدید',
+              hintStyle: const TextStyle(fontFamily: 'Traffic', color: Color(0xFF9AA0AD)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: const BorderSide(color: Color(0xFFE3E6EC)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: const BorderSide(color: Color(0xFFE3E6EC)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: const BorderSide(color: primaryBlue, width: 1.5),
+              ),
+            ),
           ),
-        ],
-      ),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('انصراف', style: TextStyle(fontFamily: 'Traffic')),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(dialogContext, controller.text),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryBlue,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              child: const Text('تایید', style: TextStyle(fontFamily: 'Traffic')),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<bool?> _confirmAction({
+    required String title,
+    required String message,
+    required String confirmLabel,
+    bool danger = false,
+  }) {
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Text(
+            title,
+            textDirection: TextDirection.rtl,
+            style: const TextStyle(
+              fontFamily: 'Traffic',
+              color: darkText,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            message,
+            textDirection: TextDirection.rtl,
+            style: const TextStyle(fontFamily: 'Traffic', color: secondaryText, fontSize: 14),
+          ),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('انصراف', style: TextStyle(fontFamily: 'Traffic')),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(
+                foregroundColor: danger ? const Color(0xFFE84C4C) : primaryBlue,
+              ),
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: Text(confirmLabel, style: const TextStyle(fontFamily: 'Traffic')),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -195,8 +504,53 @@ class _SearchPageState extends State<SearchPage> {
       separatorBuilder: (_, __) => const SizedBox(height: 9),
       itemBuilder: (_, index) {
         final result = _results[index];
-        return _ResultTile(result: result, onTap: () => _openResult(result));
+        return _ResultTile(
+          result: result,
+          onTap: () => _openResult(result),
+          menu: _buildMenuFor(result),
+        );
       },
+    );
+  }
+
+  /// درست مثل صفحه‌ی مدیریت فایل: پوشه‌ی مشتری منوی «باز کردن / تغییر
+  /// نام / زیپ کردن / اشتراک‌گذاری / حذف» دارد و فایل ZIP منوی «تغییر
+  /// نام / اشتراک‌گذاری / حذف».
+  Widget _buildMenuFor(SearchResult result) {
+    final isDirectory = result.isDirectory;
+
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.more_vert_rounded, color: Color(0xFF6B7280)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      onSelected: (value) {
+        switch (value) {
+          case 'open':
+            _openResult(result);
+            break;
+          case 'rename':
+            isDirectory ? _renameFolder(result) : _renameZip(result);
+            break;
+          case 'zip':
+            _zipFolder(result);
+            break;
+          case 'share':
+            isDirectory ? _shareFolder(result) : _shareZip(result);
+            break;
+          case 'delete':
+            isDirectory ? _deleteFolder(result) : _deleteZip(result);
+            break;
+        }
+      },
+      itemBuilder: (context) => [
+        if (isDirectory) const PopupMenuItem(value: 'open', child: Text('باز کردن')),
+        const PopupMenuItem(value: 'rename', child: Text('تغییر نام')),
+        if (isDirectory) const PopupMenuItem(value: 'zip', child: Text('زیپ کردن')),
+        const PopupMenuItem(value: 'share', child: Text('اشتراک‌گذاری')),
+        const PopupMenuItem(
+          value: 'delete',
+          child: Text('حذف', style: TextStyle(color: Color(0xFFE84C4C))),
+        ),
+      ],
     );
   }
 
@@ -213,8 +567,9 @@ class _SearchPageState extends State<SearchPage> {
 class _ResultTile extends StatelessWidget {
   final SearchResult result;
   final VoidCallback onTap;
+  final Widget menu;
 
-  const _ResultTile({required this.result, required this.onTap});
+  const _ResultTile({required this.result, required this.onTap, required this.menu});
 
   @override
   Widget build(BuildContext context) {
@@ -274,8 +629,8 @@ class _ResultTile extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              const Icon(Icons.chevron_left_rounded, color: Color(0xFF9AA1AD)),
+              const SizedBox(width: 4),
+              menu,
             ],
           ),
         ),
@@ -342,6 +697,3 @@ class _EmptyState extends StatelessWidget {
     );
   }
 }
-
-
-

@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 import 'customer_info_page.dart';
@@ -235,6 +234,3 @@ class _ChargeOptionCard extends StatelessWidget {
     );
   }
 }
-
-
-

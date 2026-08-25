@@ -1,4 +1,3 @@
-
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -111,7 +110,7 @@ class _FileManagerPageState extends State<FileManagerPage> {
   void _openFolder(Directory folder) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => _FolderContentsPage(folder: folder)),
+      MaterialPageRoute(builder: (_) => FolderContentsPage(folder: folder)),
     );
   }
 
@@ -993,16 +992,19 @@ class _FileManagerPageState extends State<FileManagerPage> {
 }
 
 /// صفحه‌ی ساده‌ی داخل‌اپی برای مرور فایل‌های یک پوشه‌ی مشتری.
-class _FolderContentsPage extends StatefulWidget {
+///
+/// این کلاس عمومی است (نه private) چون از صفحه‌ی جستجوی سریع
+/// (search_page.dart) هم برای باز کردن پوشه‌ی نتیجه‌ی جستجو استفاده می‌شود.
+class FolderContentsPage extends StatefulWidget {
   final Directory folder;
 
-  const _FolderContentsPage({required this.folder});
+  const FolderContentsPage({super.key, required this.folder});
 
   @override
-  State<_FolderContentsPage> createState() => _FolderContentsPageState();
+  State<FolderContentsPage> createState() => _FolderContentsPageState();
 }
 
-class _FolderContentsPageState extends State<_FolderContentsPage> {
+class _FolderContentsPageState extends State<FolderContentsPage> {
   static const _imageExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.heic'];
 
   List<File> _files = [];
@@ -1686,6 +1688,3 @@ class _ImageCropPageState extends State<_ImageCropPage> {
     );
   }
 }
-
-
-

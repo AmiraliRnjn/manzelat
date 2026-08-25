@@ -1,4 +1,3 @@
-
 import 'package:shared_preferences/shared_preferences.dart';
 
 
@@ -8,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class StorageSettingsService {
 
   static const String _storagePathKey = 'storage_path';
+  static const String _systemNumberKey = 'system_number';
 
   /// مسیر ذخیره‌شده را برمی‌گرداند. اگر هنوز چیزی ذخیره نشده باشد null است.
   static Future<String?> getStoragePath() async {
@@ -27,7 +27,24 @@ class StorageSettingsService {
 
   }
 
+  /// شماره‌ی سیستم یا موبایل (بین ۱ تا ۵) که در تنظیمات انتخاب شده را
+  /// برمی‌گرداند. اگر هنوز چیزی انتخاب نشده باشد null است.
+  static Future<int?> getSystemNumber() async {
+
+    final prefs = await SharedPreferences.getInstance();
+
+    return prefs.getInt(_systemNumberKey);
+
+  }
+
+  /// شماره‌ی جدید سیستم یا موبایل را ذخیره می‌کند و شماره‌ی قبلی را
+  /// جایگزین می‌کند. تا وقتی دوباره عوض نشود، همین مقدار باقی می‌ماند.
+  static Future<void> setSystemNumber(int number) async {
+
+    final prefs = await SharedPreferences.getInstance();
+
+    await prefs.setInt(_systemNumberKey, number);
+
+  }
+
 }
-
-
-

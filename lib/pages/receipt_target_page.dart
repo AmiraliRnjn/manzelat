@@ -1,4 +1,3 @@
-
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../app_enum.dart';
@@ -194,5 +193,3 @@ class _ReceiptTargetPageState extends State<ReceiptTargetPage>
     super.dispose();
   }
 }
-
-

@@ -1,4 +1,3 @@
-
 import 'package:shared_preferences/shared_preferences.dart';
 import '../reminder_status.dart';
 
@@ -101,5 +100,3 @@ class CustomerStatusService {
     return ReminderStatus.notSent;
   }
 }
-
-

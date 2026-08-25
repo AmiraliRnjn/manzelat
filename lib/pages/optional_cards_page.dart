@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'camera_page.dart';
 import 'nfc_scan_page.dart';
@@ -88,6 +87,3 @@ class _OptionalCardsPageState extends State<OptionalCardsPage> {
     );
   }
 }
-
-
-
