@@ -288,4 +288,80 @@ class FileManagerService {
       rethrow;
     }
   }
+
+  /// نام فایل ZIP ترکیبی که همه‌ی ZIP‌های روز را در خودش جای می‌دهد.
+  /// این فایل مشتری نیست، پس عمداً از وضعیت یادآور (قرمز/زرد/سبز) کنار
+  /// گذاشته می‌شود تا با ZIPهای واقعی مشتری‌ها اشتباه گرفته نشود.
+  static const String allZipsFileName = 'زیپ همه فایلها برای ارسال';
+
+  /// همه‌ی ZIP‌های موجود (به‌جز خودِ ZIP ترکیبی قبلی، اگر باشد) را در یک
+  /// ZIP واحد به نام [allZipsFileName] در همان پوشه‌ی روز قرار می‌دهد.
+  /// فایل‌های اصلی مشتری‌ها دست‌نخورده باقی می‌مانند؛ فقط یک نسخه از
+  /// آن‌ها داخل ZIP جدید کپی می‌شود.
+  static Future<File> zipAllCustomerZips(OperationType operationType) async {
+    final dayFolder = await getDayFolder(operationType);
+    if (dayFolder == null || !await dayFolder.exists()) {
+      throw FileSystemException('پوشه‌ی این تاریخ وجود ندارد.');
+    }
+
+    final zips = (await getCustomerZipFiles(operationType))
+        .where((f) => displayName(f) != allZipsFileName)
+        .toList();
+
+    if (zips.isEmpty) {
+      throw FileSystemException('فایل ZIP‌ای برای ترکیب کردن وجود ندارد.');
+    }
+
+    final zipPath = [
+      dayFolder.path,
+      '$allZipsFileName.zip',
+    ].join(Platform.pathSeparator);
+    final part = File('$zipPath.part');
+    final target = File(zipPath);
+
+    if (await part.exists()) await part.delete();
+
+    try {
+      final encoder = ZipFileEncoder();
+      try {
+        encoder.create(part.path);
+        for (final zip in zips) {
+          final stat = await zip.stat();
+          if (stat.size <= 0) {
+            throw FileSystemException(
+              'فایل ZIP صفر بایت وجود دارد.',
+              zip.path,
+            );
+          }
+          await encoder.addFile(zip);
+        }
+      } finally {
+        await encoder.close();
+      }
+
+      if (!await part.exists() || await part.length() <= 0) {
+        throw FileSystemException(
+          'ZIP ترکیبی ساخته نشد یا صفر بایت است.',
+          part.path,
+        );
+      }
+
+      if (await target.exists()) await target.delete();
+      final saved = await part.rename(target.path);
+      if (!await saved.exists() || await saved.length() <= 0) {
+        throw FileSystemException(
+          'تأیید نهایی ZIP ترکیبی ناموفق بود.',
+          target.path,
+        );
+      }
+      return saved;
+    } catch (_) {
+      if (await part.exists()) {
+        try {
+          await part.delete();
+        } catch (_) {}
+      }
+      rethrow;
+    }
+  }
 }

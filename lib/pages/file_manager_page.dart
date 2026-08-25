@@ -194,6 +194,71 @@ class _FileManagerPageState extends State<FileManagerPage> {
     }
   }
 
+  /// همه‌ی ZIP‌های موجود این تاریخ را در یک ZIP واحد به نام
+  /// [FileManagerService.allZipsFileName] ترکیب می‌کند تا بشود یک‌جا
+  /// برای سرپرست ارسال کرد. نتیجه در همین تب ZIP نمایش داده می‌شود.
+  Future<void> _zipAllForSending() async {
+    final combinable = zipFiles
+        .where(
+          (f) =>
+              FileManagerService.displayName(f) !=
+              FileManagerService.allZipsFileName,
+        )
+        .toList();
+
+    // اگر بین ZIPهایی که قرار است ترکیب شوند، فایل قرمز (هنوز ارسال
+    // نشده) وجود دارد، قبل از ادامه به کاربر هشدار می‌دهیم؛ ولی خودِ
+    // عملیات ترکیب را متوقف نمی‌کنیم چون هدف این گزینه دقیقاً همین است
+    // که همه (چه ارسال‌شده چه نشده) یک‌جا برای ارسال آماده شوند.
+    final redCount = combinable
+        .where((f) => _statusFor(f) == ReminderStatus.notSent)
+        .length;
+
+    if (redCount > 0) {
+      final confirmedDespiteRed = await _confirmAction(
+        title: 'فایل‌های ارسال‌نشده وجود دارند',
+        message:
+            '$redCount فایل ZIP قرمز (هنوز برای سرپرست ارسال نشده) هم بین این فایل‌ها هست. با این حال همه‌ی فایل‌ها با هم زیپ شوند؟',
+        confirmLabel: 'زیپ کردن همه',
+        danger: true,
+      );
+      if (confirmedDespiteRed != true) return;
+    }
+
+    final alreadyExists = zipFiles.any(
+      (f) =>
+          FileManagerService.displayName(f) ==
+          FileManagerService.allZipsFileName,
+    );
+
+    if (alreadyExists) {
+      final confirmed = await _confirmAction(
+        title: 'بازنویسی ZIP ترکیبی',
+        message:
+            'فایل «${FileManagerService.allZipsFileName}» از قبل وجود دارد. با نسخه‌ی جدید جایگزین شود؟',
+        confirmLabel: 'بازنویسی',
+      );
+      if (confirmed != true) return;
+    }
+
+    try {
+      await FileManagerService.zipAllCustomerZips(widget.operationType);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('فایل ZIP ترکیبی با موفقیت ساخته شد.')),
+      );
+
+      await _loadData();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('ساخت ZIP ترکیبی با خطا مواجه شد: $e')),
+      );
+    }
+  }
+
   Future<void> _deleteFolder(Directory folder) async {
     final confirmed = await _confirmAction(
       title: 'حذف پوشه',
@@ -592,7 +657,15 @@ class _FileManagerPageState extends State<FileManagerPage> {
         : 'مدیریت فایل‌های صدور';
 
     final folderDot = _tabDotColor(customerFolders);
-    final zipDot = _tabDotColor(zipFiles);
+    final zipDot = _tabDotColor(
+      zipFiles
+          .where(
+            (f) =>
+                FileManagerService.displayName(f) !=
+                FileManagerService.allZipsFileName,
+          )
+          .toList(),
+    );
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -673,13 +746,23 @@ class _FileManagerPageState extends State<FileManagerPage> {
                             borderRadius: BorderRadius.circular(16),
                           ),
                           onSelected: (value) {
-                            if (value == 'clean_folders') {
+                            if (value == 'zip_all') {
+                              _zipAllForSending();
+                            } else if (value == 'clean_folders') {
                               _cleanupReceivedFolders();
                             } else if (value == 'clean_zips') {
                               _cleanupReceivedZips();
                             }
                           },
                           itemBuilder: (context) => const [
+                            PopupMenuItem(
+                              value: 'zip_all',
+                              child: Text(
+                                'زیپ همه فایل‌ها برای ارسال',
+                                textDirection: TextDirection.rtl,
+                                style: TextStyle(fontFamily: 'Traffic'),
+                              ),
+                            ),
                             PopupMenuItem(
                               value: 'clean_folders',
                               child: Text(
@@ -1066,16 +1149,29 @@ class _FileManagerPageState extends State<FileManagerPage> {
         itemCount: filtered.length,
         itemBuilder: (context, index) {
           final zip = filtered[index];
+          final isCombinedZip =
+              FileManagerService.displayName(zip) ==
+              FileManagerService.allZipsFileName;
           final status = _statusFor(zip);
 
           return _buildEntityCard(
-            leading: _leadingWithDot(
-              Icons.folder_zip_rounded,
-              const Color(0xFFF07A3A),
-              status,
-            ),
+            leading: isCombinedZip
+                ? Container(
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.folder_zip_rounded,
+                      color: _primaryBlue,
+                    ),
+                  )
+                : _leadingWithDot(
+                    Icons.folder_zip_rounded,
+                    const Color(0xFFF07A3A),
+                    status,
+                  ),
             title: FileManagerService.displayName(zip),
-            subtitle: 'فایل فشرده ZIP',
+            subtitle: isCombinedZip
+                ? 'فایل ترکیبی همه‌ی ZIPها'
+                : 'فایل فشرده ZIP',
             onTap: null,
             menu: PopupMenuButton<String>(
               icon: const Icon(

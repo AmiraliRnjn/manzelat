@@ -89,8 +89,20 @@ class _HomePageState extends State<HomePage> {
     final input = await showDialog<String>(
       context: context,
       builder: (dialogContext) {
+        // فضای واقعاً باقی‌مانده بعد از باز شدن کیبورد؛ با این سقف صریح،
+        // محتوای دیالوگ هر چقدر کیبورد جا بگیرد، داخل همان فضا اسکرول
+        // می‌شود و دیگر RenderFlex overflow رخ نمی‌دهد.
+        final media = MediaQuery.of(dialogContext);
+        final maxContentHeight =
+            (media.size.height - media.viewInsets.bottom - 200)
+                .clamp(80.0, double.infinity);
+
         return AlertDialog(
           scrollable: true,
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 24,
+          ),
           backgroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
@@ -104,27 +116,33 @@ class _HomePageState extends State<HomePage> {
               fontSize: 19,
             ),
           ),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            textDirection: TextDirection.rtl,
-            style: const TextStyle(fontFamily: 'Traffic'),
-            decoration: InputDecoration(
-              hintText: 'نام کاربری که امروز کار می‌کند',
-              hintTextDirection: TextDirection.rtl,
-              filled: true,
-              fillColor: const Color(0xFFF7F8FB),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(15),
-                borderSide: const BorderSide(color: Color(0xFFE3E6EC)),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(15),
-                borderSide: const BorderSide(color: Color(0xFFE3E6EC)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(15),
-                borderSide: const BorderSide(color: primaryBlue, width: 1.5),
+          content: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: maxContentHeight),
+            child: TextField(
+              controller: controller,
+              autofocus: true,
+              textDirection: TextDirection.rtl,
+              style: const TextStyle(fontFamily: 'Traffic'),
+              decoration: InputDecoration(
+                hintText: 'نام کاربری که امروز کار می‌کند',
+                hintTextDirection: TextDirection.rtl,
+                filled: true,
+                fillColor: const Color(0xFFF7F8FB),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                  borderSide: const BorderSide(color: Color(0xFFE3E6EC)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                  borderSide: const BorderSide(color: Color(0xFFE3E6EC)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                  borderSide: const BorderSide(
+                    color: primaryBlue,
+                    width: 1.5,
+                  ),
+                ),
               ),
             ),
           ),
@@ -740,6 +758,11 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // این صفحه خودش هیچ فیلد متنی‌ای ندارد؛ کیبورد فقط برای دیالوگ
+      // «کاربر امروز» باز می‌شود. بدون این خط، Scaffold با باز شدن
+      // کیبورد سعی می‌کند بدنه‌ی خودش را جمع کند و چون هدر و کارت‌ها
+      // اسکرول‌پذیر نیستند، باعث RenderFlex overflow می‌شود.
+      resizeToAvoidBottomInset: false,
       backgroundColor: const Color(0xFFFAFBFF),
       body: SafeArea(
         bottom: false,
