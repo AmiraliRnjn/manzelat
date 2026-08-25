@@ -1,4 +1,4 @@
-package com.example.first_test
+package com.example.manzelat
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -23,7 +23,7 @@ class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
 
     companion object {
         private const val TAG = "NativeNfcDebug"
-        private const val PERMISSIONS_CHANNEL = "com.example.first_test/permissions"
+        private const val PERMISSIONS_CHANNEL = "com.example.manzelat/permissions"
         private const val NFC_CHANNEL = "metro_ticket_native_nfc"
     }
 

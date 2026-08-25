@@ -1,3 +1,4 @@
+
 import 'dart:convert';
 import 'dart:io';
 
@@ -8,6 +9,7 @@ import 'package:shamsi_date/shamsi_date.dart';
 
 import 'storage_settings_service.dart';
 import 'work_date_service.dart';
+import 'log_service.dart';
 
 class BackupResult {
   final bool success;
@@ -118,9 +120,11 @@ class BackupService {
         return;
       }
 
+      LogService.i('Backup', 'شروع backup خودکار به مسیر: $folder');
       await createBackup(destinationDirectory: directory, isAutomatic: true);
-    } catch (_) {
+    } catch (e, st) {
       // Backup خودکار نباید باعث Crash برنامه شود.
+      LogService.e('Backup', 'خطا در backup خودکار', e, st);
     }
   }
 
@@ -130,6 +134,7 @@ class BackupService {
   }) async {
     Directory? tempDir;
     File? temp;
+    LogService.i('Backup', 'createBackup شروع شد (isAutomatic=$isAutomatic, مقصد=${destinationDirectory.path})');
     try {
       final rootPath = await StorageSettingsService.getStoragePath();
       if (rootPath == null || rootPath.trim().isEmpty) {
@@ -252,6 +257,8 @@ class BackupService {
       await prefs.setString(_lastBackupKey, output.path);
       await prefs.setInt(_lastBackupTimeKey, now.millisecondsSinceEpoch);
 
+      LogService.i('Backup',
+          'Backup موفق: ${files.length} فایل، ${totalBytes} بایت، مسیر=${output.path}');
       return BackupResult(
         success: true,
         message: isAutomatic
@@ -261,10 +268,11 @@ class BackupService {
         fileCount: files.length,
         totalBytes: totalBytes,
       );
-    } catch (e) {
+    } catch (e, st) {
       if (temp != null && await temp.exists()) {
         try { await temp.delete(); } catch (_) {}
       }
+      LogService.e('Backup', 'خطا هنگام ساخت Backup', e, st);
       return BackupResult(
         success: false,
         message: 'خطا هنگام ساخت Backup: $e',
@@ -371,6 +379,8 @@ class BackupService {
     required bool restoreAppState,
     bool overwriteExisting = false,
   }) async {
+    LogService.i('Backup',
+        'restoreBackup شروع شد (فایل=${backupFile.path}, overwrite=$overwriteExisting)');
     try {
       final inspection = await inspectBackup(backupFile);
       if (!inspection.valid) {
@@ -478,6 +488,8 @@ class BackupService {
           }
         }
 
+        LogService.i('Backup',
+            'Restore موفق: $restoredFiles فایل، $restoredBytes بایت، overwrite=$overwriteExisting');
         return BackupResult(
           success: true,
           message: overwriteExisting
@@ -489,7 +501,8 @@ class BackupService {
       } finally {
         await input.close();
       }
-    } catch (e) {
+    } catch (e, st) {
+      LogService.e('Backup', 'خطا هنگام Restore/Merge', e, st);
       return BackupResult(success: false, message: 'خطا هنگام Restore/Merge: $e');
     }
   }
@@ -535,3 +548,6 @@ class _BackupEntry {
         'modified': modified,
       };
 }
+
+
+

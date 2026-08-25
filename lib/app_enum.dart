@@ -1,3 +1,4 @@
+
 enum Mode {
   optional,
   noNational,
@@ -25,3 +26,6 @@ enum CardType {
   martyrCard,
   behzistiCard,
 }
+
+
+

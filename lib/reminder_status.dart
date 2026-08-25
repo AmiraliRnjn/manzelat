@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 
 /// وضعیت یادآور یک مشتری (چه پوشه‌ی اصلی، چه ZIP هم‌نامش):
@@ -23,3 +24,5 @@ extension ReminderStatusColor on ReminderStatus {
     }
   }
 }
+
+

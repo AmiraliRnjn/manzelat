@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import '../services/storage_settings_service.dart';
@@ -6,6 +7,7 @@ import '../services/storage_picker_service.dart';
 import '../services/work_date_service.dart';
 import '../services/backup_service.dart';
 import 'backup_page.dart';
+import 'logs_page.dart';
 import 'home_page.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -497,6 +499,56 @@ class _SettingsPageState extends State<SettingsPage>
                               ),
                             ),
 
+                            const SizedBox(height: 14),
+                            _SettingsPanel(
+                              child: ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                leading: Container(
+                                  width: 54,
+                                  height: 54,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEAF2FF),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: const Icon(
+                                    Icons.receipt_long_rounded,
+                                    color: primaryBlue,
+                                    size: 29,
+                                  ),
+                                ),
+                                title: const Text(
+                                  'لاگ برنامه',
+                                  style: TextStyle(
+                                    color: darkText,
+                                    fontFamily: 'Traffic',
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                subtitle: const Text(
+                                  'مشاهده، اشتراک‌گذاری یا پاک کردن لاگ برنامه',
+                                  style: TextStyle(
+                                    color: secondaryText,
+                                    fontFamily: 'Traffic',
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                trailing: const Icon(
+                                  Icons.chevron_right_rounded,
+                                  color: primaryBlue,
+                                  size: 30,
+                                ),
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const LogsPage(),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+
                             const SizedBox(height: 28),
                             const _SectionTitle(
                               title: 'تاریخ کاری',
@@ -562,7 +614,7 @@ class _SettingsPageState extends State<SettingsPage>
                              Container(
                               padding: EdgeInsets.only(top: 20),
                               alignment: Alignment.center,
-                              child: Text('This App Build With ❤️ By Knightra',style: TextStyle(fontWeight: FontWeight.w500),),
+                              child: Text('This App Build With 💙 By Knightra Team',style: TextStyle(fontWeight: FontWeight.w500),),
                             )
                           ],
                         ),
@@ -822,3 +874,6 @@ class _BottomNavItem extends StatelessWidget {
     );
   }
 }
+
+
+

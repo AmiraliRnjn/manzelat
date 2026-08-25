@@ -1,13 +1,15 @@
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import 'log_service.dart';
+
 /// مسئول بررسی و درخواست مجوز دسترسی کامل به حافظه (All Files Access).
 /// این مجوز چون برنامه باید بتواند در مسیر دلخواه کاربر (مثلاً روی
 /// کارت حافظه یا هر پوشه‌ای غیر از پوشه‌ی اختصاصی اپ) فایل بنویسد لازم است.
 class PermissionService {
 
   static const MethodChannel _channel =
-      MethodChannel('com.example.first_test/permissions');
+      MethodChannel('com.example.manzelat/permissions');
 
   /// بررسی می‌کند که آیا مجوز از قبل داده شده یا نه.
   static Future<bool> hasStoragePermission() async {
@@ -23,6 +25,12 @@ class PermissionService {
   static Future<bool> requestStoragePermission() async {
 
     final status = await Permission.manageExternalStorage.request();
+
+    if (status.isGranted) {
+      LogService.i('Permission', 'دسترسی حافظه داده شد');
+    } else {
+      LogService.w('Permission', 'دسترسی حافظه رد شد (status=$status)');
+    }
 
     return status.isGranted;
 
@@ -48,7 +56,9 @@ class PermissionService {
     } catch (e) {
 
       // اگر باز هم نشد، کاری از دست ما ساخته نیست؛
-      // خطا را بی‌سروصدا نادیده می‌گیریم چون UI خودش وضعیت مجوز را نشان می‌دهد.
+      // خطا را بی‌سروصدا نادیده می‌گیریم چون UI خودش وضعیت مجوز را نشان می‌دهد،
+      // ولی برای بررسی بعدی در لاگ ثبت می‌شود.
+      LogService.w('Permission', 'باز کردن لیست تنظیمات All Files Access ناموفق بود', e);
 
     }
 

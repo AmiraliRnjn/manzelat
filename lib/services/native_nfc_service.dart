@@ -1,15 +1,26 @@
 import 'package:flutter/services.dart';
 
+import 'log_service.dart';
+
 class NativeNfcService {
   static const MethodChannel _channel =
       MethodChannel('metro_ticket_native_nfc');
 
   static Future<void> startReader() async {
-    await _channel.invokeMethod<void>('startNfcReader');
+    try {
+      await _channel.invokeMethod<void>('startNfcReader');
+    } catch (e, st) {
+      LogService.e('NFC', 'شروع NFC reader ناموفق بود', e, st);
+      rethrow;
+    }
   }
 
   static Future<void> stopReader() async {
-    await _channel.invokeMethod<void>('stopNfcReader');
+    try {
+      await _channel.invokeMethod<void>('stopNfcReader');
+    } catch (e) {
+      LogService.w('NFC', 'توقف NFC reader با خطا مواجه شد', e);
+    }
   }
 
   static Future<bool> isNfcEnabled() async {

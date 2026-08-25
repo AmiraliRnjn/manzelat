@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:persian_datetime_picker/persian_datetime_picker.dart';
@@ -8,10 +9,31 @@ import 'pages/home_page.dart';
 import 'pages/charge_page.dart';
 import 'pages/receipt_target_page.dart';
 import 'services/backup_service.dart';
+import 'services/log_service.dart';
 //import 'issue_page.dart';
 
 void main() {
-  runApp(const MyApp());
+  // در نسخه‌ی واقعی (Release) که دست کاربرهاست فقط warning/error ثبت
+  // می‌شود (یعنی عملاً هیچ نوشتنی در حالت عادی انجام نمی‌شود). در حالت
+  // توسعه، برای دیباگ کامل‌تر همه سطوح ثبت می‌شوند.
+  LogService.minLevel = kReleaseMode ? LogLevel.warning : LogLevel.debug;
+
+  runZonedGuarded(() {
+    // خطاهای فریم‌ورک فلاتر (مثلاً خطای build یک ویجت) را می‌گیرد و هم
+    // در کنسول نشان می‌دهد و هم در فایل لاگ ثبت می‌کند.
+    FlutterError.onError = (FlutterErrorDetails details) {
+      FlutterError.presentError(details);
+      LogService.e('FlutterError', details.exceptionAsString(), details.exception, details.stack);
+    };
+
+    LogService.i('App', 'برنامه شروع به کار کرد');
+    runApp(const MyApp());
+  }, (error, stackTrace) {
+    // هر خطای دیگری که در کل اپ (خارج از build فلاتر) رخ بدهد، مثلاً
+    // در یک Future ناهماهنگ، اینجا گرفته می‌شود تا اپ خاموش کرش نکند
+    // و اثری از آن در لاگ بماند.
+    LogService.e('Uncaught', 'خطای مدیریت‌نشده', error, stackTrace);
+  });
 }
 
 class MyApp extends StatefulWidget {
@@ -40,6 +62,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       BackupService.maybeRunAutoBackup();
+    } else if (state == AppLifecycleState.paused) {
+      // موقع رفتن به پس‌زمینه لاگ‌های بافرشده را فوری روی دیسک می‌نویسیم
+      // تا اگر سیستم‌عامل اپ را کامل ببندد چیزی از دست نرود.
+      LogService.flushNow();
     }
   }
 

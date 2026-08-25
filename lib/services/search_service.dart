@@ -1,3 +1,4 @@
+
 import 'dart:io';
 
 import '../services/storage_settings_service.dart';
@@ -172,3 +173,6 @@ class SearchService {
   static bool _isTwoDigit(String value) => RegExp(r'^\d{2}$').hasMatch(value);
   static bool _isEightDigit(String value) => RegExp(r'^\d{8}$').hasMatch(value);
 }
+
+
+

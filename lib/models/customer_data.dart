@@ -1,3 +1,4 @@
+
 import '../app_enum.dart';
 
 
@@ -28,3 +29,6 @@ class CustomerData {
     this.ticketNumber,
   });
 }
+
+
+

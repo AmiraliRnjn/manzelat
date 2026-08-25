@@ -1,3 +1,4 @@
+
 import 'dart:io';
 import 'package:flutter/services.dart';
 
@@ -1622,3 +1623,6 @@ Future<void> takePicture() async {
     super.dispose();
   }
 }
+
+
+

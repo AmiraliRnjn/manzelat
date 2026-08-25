@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 
 import '../models/customer_data.dart';
@@ -596,3 +597,6 @@ class _NfcScanPageState extends State<NfcScanPage>
     );
   }
 }
+
+
+

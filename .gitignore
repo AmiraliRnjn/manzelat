@@ -43,3 +43,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# فایل‌های امضای Release - هیچ‌وقت نباید توی گیت باشن
+android/key.properties
+*.jks
+*.keystore
