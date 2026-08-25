@@ -300,7 +300,7 @@ class CameraPage extends StatefulWidget {
   State<CameraPage> createState() => _CameraPageState();
 }
 
-class _CameraPageState extends State<CameraPage> {
+class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
   final CropController cropController = CropController();
   CameraController? cameraController;
   List<CameraDescription> cameras = [];
@@ -346,6 +346,7 @@ bool isTakingPicture = false;
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     initializeCamera(); // Your existing camera initialization method
 
     // Explicitly initialize controllers for all 3 required input fields
@@ -1665,8 +1666,29 @@ Future<void> takePicture() async {
         ),
       );
 
+  // دوربین یکی از بیشترین مصرف‌کننده‌های باتری است و پلاگین دوربین به‌طور
+  // پیش‌فرض وقتی برنامه به پس‌زمینه می‌رود (مثلاً کاربر سوییچ می‌کند یا
+  // تماس می‌آید) پیش‌نمایش را خاموش نمی‌کند. اینجا با گوش‌دادن به چرخه‌ی
+  // عمر برنامه، دوربین را موقع رفتن به پس‌زمینه آزاد می‌کنیم و موقع
+  // برگشتن دوباره می‌سازیم؛ این‌طور دوربین هیچ‌وقت بی‌جهت روشن نمی‌ماند.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final controller = cameraController;
+    if (controller == null || !controller.value.isInitialized) return;
+
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
+      cameraController = null;
+      setState(() => isCameraReady = false);
+      controller.dispose();
+    } else if (state == AppLifecycleState.resumed) {
+      initializeCamera();
+    }
+  }
+
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     cameraController?.dispose();
     for (var c in textControllers.values) {
       c.dispose();

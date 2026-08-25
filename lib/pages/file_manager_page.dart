@@ -324,6 +324,97 @@ class _FileManagerPageState extends State<FileManagerPage> {
     }
   }
 
+  // ---------------------------- پاکسازی گروهی (سه‌نقطه) ----------------------------
+
+  /// پاکسازی همه‌ی پوشه‌های اصلی که وضعیتشان سبز (رسید دریافت‌شده) است.
+  /// فقط خودِ پوشه‌ها حذف می‌شوند؛ فایل‌های ZIP هم‌نام دست‌نخورده می‌مانند
+  /// (پاکسازی پوشه و ZIP عمداً از هم جداست).
+  Future<void> _cleanupReceivedFolders() async {
+    final targets = customerFolders
+        .where((f) => _statusFor(f) == ReminderStatus.receiptReceived)
+        .toList();
+
+    if (targets.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('پوشه‌ی سبز (دارای رسید) برای پاکسازی وجود ندارد.'),
+        ),
+      );
+      return;
+    }
+
+    final confirmed = await _confirmAction(
+      title: 'پاکسازی پوشه‌های اصلی',
+      message:
+          '${targets.length} پوشه که رسیدشان دریافت شده، برای همیشه حذف '
+          'می‌شوند. فایل‌های ZIP هم‌نامشان دست‌نخورده باقی می‌مانند. مطمئن هستید؟',
+      confirmLabel: 'پاکسازی',
+      danger: true,
+    );
+    if (confirmed != true) return;
+
+    var deleted = 0;
+    for (final folder in targets) {
+      try {
+        await folder.delete(recursive: true);
+        deleted++;
+        // توجه: وضعیت (سبز) عمداً پاک نمی‌شود، چون ممکن است ZIP هم‌نام
+        // هنوز مانده باشد و باید همان رنگ سبز را نشان دهد.
+      } catch (_) {
+        // اگر حذف یک پوشه با خطا مواجه شد، برای بقیه ادامه می‌دهیم.
+      }
+    }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$deleted پوشه پاکسازی شد.')),
+    );
+    await _loadData();
+  }
+
+  /// پاکسازی همه‌ی فایل‌های ZIP که وضعیتشان سبز (رسید دریافت‌شده) است.
+  /// پوشه‌های اصلی هم‌نام دست‌نخورده می‌مانند.
+  Future<void> _cleanupReceivedZips() async {
+    final targets = zipFiles
+        .where((f) => _statusFor(f) == ReminderStatus.receiptReceived)
+        .toList();
+
+    if (targets.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('فایل ZIP سبز (دارای رسید) برای پاکسازی وجود ندارد.'),
+        ),
+      );
+      return;
+    }
+
+    final confirmed = await _confirmAction(
+      title: 'پاکسازی فایل‌های ZIP',
+      message:
+          '${targets.length} فایل ZIP که رسیدشان دریافت شده، برای همیشه حذف '
+          'می‌شوند. پوشه‌های اصلی دست‌نخورده باقی می‌مانند. مطمئن هستید؟',
+      confirmLabel: 'پاکسازی',
+      danger: true,
+    );
+    if (confirmed != true) return;
+
+    var deleted = 0;
+    for (final zip in targets) {
+      try {
+        await zip.delete();
+        deleted++;
+      } catch (_) {
+        // اگر حذف یک فایل با خطا مواجه شد، برای بقیه ادامه می‌دهیم.
+      }
+    }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$deleted فایل ZIP پاکسازی شد.')),
+    );
+    await _loadData();
+  }
+
   Future<void> _shareZip(File zip) async {
     final shareResult = await Share.shareXFiles([
       XFile(zip.path),
@@ -571,6 +662,41 @@ class _FileManagerPageState extends State<FileManagerPage> {
                               ),
                             ],
                           ),
+                        ),
+                        PopupMenuButton<String>(
+                          icon: const Icon(
+                            Icons.more_vert_rounded,
+                            color: Colors.white,
+                          ),
+                          color: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          onSelected: (value) {
+                            if (value == 'clean_folders') {
+                              _cleanupReceivedFolders();
+                            } else if (value == 'clean_zips') {
+                              _cleanupReceivedZips();
+                            }
+                          },
+                          itemBuilder: (context) => const [
+                            PopupMenuItem(
+                              value: 'clean_folders',
+                              child: Text(
+                                'پاکسازی پوشه‌های اصلی (سبزها)',
+                                textDirection: TextDirection.rtl,
+                                style: TextStyle(fontFamily: 'Traffic'),
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'clean_zips',
+                              child: Text(
+                                'پاکسازی فایل‌های ZIP (سبزها)',
+                                textDirection: TextDirection.rtl,
+                                style: TextStyle(fontFamily: 'Traffic'),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

@@ -90,6 +90,7 @@ class _HomePageState extends State<HomePage> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
+          scrollable: true,
           backgroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
@@ -160,8 +161,15 @@ class _HomePageState extends State<HomePage> {
     if (name == null || name.isEmpty) return;
 
     final date = workDate ?? Jalali.now();
+
+    // نام فعلیِ پوشه (قبل از تغییر) را می‌گیریم؛ چه بار اول باشد (فقط
+    // تاریخ خام) چه بار دوم به بعد (تاریخ + نام کاربر قبلی). این باید
+    // قبل از ذخیره‌ی نام جدید خوانده شود.
+    final oldDayFolderName =
+        await WorkerSelectionService.resolveDayFolderName(date);
+
     await WorkerSelectionService.setWorkerForDate(date, name);
-    await _renameExistingDayFolders(date, name);
+    await _renameExistingDayFolders(date, oldDayFolderName);
 
     if (!mounted) return;
 
@@ -179,20 +187,21 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  /// اگر پوشه‌ی روز (شارژ و/یا صدور) از قبل بدون نام کاربر ساخته شده
-  /// باشد، همین الان آن را با نام جدید (شامل نام کاربر) تغییر نام
-  /// می‌دهد تا مشتری‌های قبل و بعد از انتخاب کاربر، همگی در یک پوشه
-  /// بمانند.
-  Future<void> _renameExistingDayFolders(Jalali date, String worker) async {
+  /// اگر پوشه‌ی روز (شارژ و/یا صدور) از قبل با نام قدیمی ساخته شده باشد
+  /// (چه فقط تاریخ خام، چه تاریخ+نام کاربر قبلی)، همین الان آن را با نام
+  /// جدید (تاریخ+نام کاربر تازه) تغییر نام می‌دهد تا مشتری‌های قبل و بعد
+  /// از تغییر کاربر، همگی در یک پوشه بمانند. [oldDayName] باید نام پوشه‌ی
+  /// روز قبل از ذخیره‌ی نام کاربر جدید باشد (نه لزوماً نام خام تاریخ)،
+  /// وگرنه رنیم‌های بعد از اولین بار اثر نمی‌کنند.
+  Future<void> _renameExistingDayFolders(Jalali date, String oldDayName) async {
     final rootPath = await StorageSettingsService.getStoragePath();
     if (rootPath == null || rootPath.trim().isEmpty) return;
 
-    final baseDayName = WorkDateService.folderNameFor(date);
-    final suffixedDayName = await WorkerSelectionService.resolveDayFolderName(
+    final newDayName = await WorkerSelectionService.resolveDayFolderName(
       date,
     );
 
-    if (suffixedDayName == baseDayName) return;
+    if (newDayName == oldDayName) return;
 
     for (final operationFolderName in ['شارژ', 'صدور']) {
       final parentPath = [
@@ -203,10 +212,10 @@ class _HomePageState extends State<HomePage> {
       ].join(Platform.pathSeparator);
 
       final oldDir = Directory(
-        [parentPath, baseDayName].join(Platform.pathSeparator),
+        [parentPath, oldDayName].join(Platform.pathSeparator),
       );
       final newDir = Directory(
-        [parentPath, suffixedDayName].join(Platform.pathSeparator),
+        [parentPath, newDayName].join(Platform.pathSeparator),
       );
 
       if (await oldDir.exists() && !await newDir.exists()) {

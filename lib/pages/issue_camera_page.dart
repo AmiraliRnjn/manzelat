@@ -286,7 +286,8 @@ class IssueCameraPage extends StatefulWidget {
   State<IssueCameraPage> createState() => _IssueCameraPageState();
 }
 
-class _IssueCameraPageState extends State<IssueCameraPage> {
+class _IssueCameraPageState extends State<IssueCameraPage>
+    with WidgetsBindingObserver {
   final CropController cropController = CropController();
   CameraController? cameraController;
   List<CameraDescription> cameras = [];
@@ -320,6 +321,7 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     initializeCamera();
 
     if (widget.customer.cards.contains(CardType.national)) {
@@ -1458,8 +1460,28 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
     );
   }
 
+  // دوربین یکی از بیشترین مصرف‌کننده‌های باتری است و پلاگین دوربین به‌طور
+  // پیش‌فرض وقتی برنامه به پس‌زمینه می‌رود پیش‌نمایش را خاموش نمی‌کند.
+  // اینجا با گوش‌دادن به چرخه‌ی عمر برنامه، دوربین را موقع رفتن به
+  // پس‌زمینه آزاد می‌کنیم و موقع برگشتن دوباره می‌سازیم.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final controller = cameraController;
+    if (controller == null || !controller.value.isInitialized) return;
+
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
+      cameraController = null;
+      setState(() => isCameraReady = false);
+      controller.dispose();
+    } else if (state == AppLifecycleState.resumed) {
+      initializeCamera();
+    }
+  }
+
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     cameraController?.dispose();
     for (final c in textControllers.values) {
       c.dispose();
