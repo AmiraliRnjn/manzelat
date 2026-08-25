@@ -1,4 +1,3 @@
-
 import 'dart:io';
 import 'package:flutter/services.dart';
 
@@ -211,62 +210,78 @@ class _StyledTextField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
   final IconData icon;
+  // تعداد رقم مجاز برای این فیلد (کد ملی/بلیط = ۱۰، تلفن = ۱۱). فقط رقم
+  // پذیرفته می‌شود و بعد از رسیدن به همین تعداد، تایپ بیشتر ممکن نیست.
+  final int maxLength;
 
   const _StyledTextField({
     required this.controller,
     required this.label,
     required this.icon,
+    required this.maxLength,
   });
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      keyboardType: TextInputType.number,
-      textDirection: TextDirection.rtl,
-      textAlign: TextAlign.right,
-      style: const TextStyle(
-        fontFamily: 'Traffic',
-        fontSize: 16,
-        color: Color(0xFF172554),
-      ),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(
-          fontFamily: 'Traffic',
-          fontSize: 13,
-          color: Color(0xFF64748B),
-        ),
-        prefixIcon: Icon(
-          icon,
-          color: const Color(0xFF1565C0),
-        ),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 16,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(
-            color: Color(0xFFE2E8F0),
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: controller,
+      builder: (context, value, _) {
+        // فقط وقتی چیزی تایپ شده ولی هنوز به تعداد رقم لازم نرسیده، قرمز
+        // می‌شود؛ فیلد خالی (هنوز دست نخورده) قرمز نیست.
+        final isInvalid = value.text.isNotEmpty && value.text.length != maxLength;
+        final fieldColor =
+            isInvalid ? const Color(0xFFDC2626) : const Color(0xFFE2E8F0);
+        final focusColor =
+            isInvalid ? const Color(0xFFDC2626) : const Color(0xFF1565C0);
+
+        return TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          textDirection: TextDirection.rtl,
+          textAlign: TextAlign.right,
+          maxLength: maxLength,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(maxLength),
+          ],
+          style: const TextStyle(
+            fontFamily: 'Traffic',
+            fontSize: 16,
+            color: Color(0xFF172554),
           ),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(
-            color: Color(0xFFE2E8F0),
+          decoration: InputDecoration(
+            labelText: label,
+            counterText: '',
+            labelStyle: TextStyle(
+              fontFamily: 'Traffic',
+              fontSize: 13,
+              color: isInvalid ? const Color(0xFFDC2626) : const Color(0xFF64748B),
+            ),
+            prefixIcon: Icon(
+              icon,
+              color: isInvalid ? const Color(0xFFDC2626) : const Color(0xFF1565C0),
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 16,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: fieldColor),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: fieldColor, width: isInvalid ? 1.4 : 1),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: focusColor, width: 1.5),
+            ),
           ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(
-            color: Color(0xFF1565C0),
-            width: 1.5,
-          ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -838,6 +853,7 @@ Future<void> takePicture() async {
                         controller: textControllers[CardType.ticket]!,
                         label: 'سریال پشت کارت بلیط را وارد کنید',
                         icon: Icons.confirmation_number_outlined,
+                        maxLength: 10,
                       ),
                       const SizedBox(height: 12),
 
@@ -847,6 +863,7 @@ Future<void> takePicture() async {
                         controller: textControllers[CardType.national]!,
                         label: 'کد ملی را وارد کنید',
                         icon: Icons.badge_outlined,
+                        maxLength: 10,
                       ),
                       const SizedBox(height: 12),
 
@@ -855,6 +872,7 @@ Future<void> takePicture() async {
                         controller: textControllers[CardType.manzelat]!,
                         label: 'شماره تلفن همراه را وارد کنید',
                         icon: Icons.phone_outlined,
+                        maxLength: 11,
                       ),
                     ] else ...[
                       if (widget.customer.cards.contains(CardType.national)) ...[
@@ -862,6 +880,7 @@ Future<void> takePicture() async {
                           controller: textControllers[CardType.national]!,
                           label: 'کد ملی را وارد کنید',
                           icon: Icons.badge_outlined,
+                          maxLength: 10,
                         ),
                         const SizedBox(height: 12),
                       ],
@@ -870,6 +889,7 @@ Future<void> takePicture() async {
                           controller: textControllers[_phoneNumberCardType]!,
                           label: 'شماره تلفن همراه را وارد کنید',
                           icon: Icons.phone_outlined,
+                          maxLength: 11,
                         ),
                     ],
                   ],
@@ -917,6 +937,37 @@ Future<void> takePicture() async {
                         (phoneCard != null && phoneNumberText.isEmpty)) {
                       _showStyledSnackBar(
                         'لطفاً نام فایل مدارک انتخاب‌شده را کامل کنید',
+                        isError: true,
+                      );
+                      return;
+                    }
+
+                    // ۲.۵ اعتبارسنجی تعداد رقم: بلیط و کد ملی باید دقیقاً
+                    // ۱۰ رقم و شماره تلفن باید دقیقاً ۱۱ رقم باشد.
+                    if (hasTicket && ticketText.length != 10) {
+                      _showStyledSnackBar(
+                        'سریال کارت بلیط باید ۱۰ رقم باشد.',
+                        isError: true,
+                      );
+                      return;
+                    }
+                    if (hasNational && nationalText.length != 10) {
+                      _showStyledSnackBar(
+                        'کد ملی باید ۱۰ رقم باشد.',
+                        isError: true,
+                      );
+                      return;
+                    }
+                    if (hasManzelat && manzelatText.length != 11) {
+                      _showStyledSnackBar(
+                        'شماره تلفن همراه باید ۱۱ رقم باشد.',
+                        isError: true,
+                      );
+                      return;
+                    }
+                    if (phoneCard != null && phoneNumberText.length != 11) {
+                      _showStyledSnackBar(
+                        'شماره تلفن همراه باید ۱۱ رقم باشد.',
                         isError: true,
                       );
                       return;
@@ -1623,6 +1674,3 @@ Future<void> takePicture() async {
     super.dispose();
   }
 }
-
-
-

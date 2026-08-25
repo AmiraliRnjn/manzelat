@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import '../models/customer_data.dart';
 import '../app_enum.dart';
@@ -301,42 +300,63 @@ class _IssueCustomerInfoPageState extends State<IssueCustomerInfoPage> {
                               ),
                             ),
                             const SizedBox(height: 14),
-                            TextField(
-                              controller: nationalCodeController,
-                              textDirection: TextDirection.rtl,
-                              textAlign: TextAlign.right,
-                              keyboardType: TextInputType.number,
-                              maxLength: 10,
-                              textInputAction: TextInputAction.done,
-                              onSubmitted: (_) => _startProcess(),
-                              decoration: InputDecoration(
-                                labelText: 'کد ملی',
-                                hintText: 'مثال: ۱۲۳۴۵۶۷۸۹۰',
-                                counterText: '',
-                                prefixIcon: const Icon(
-                                  Icons.badge_outlined,
-                                  color: primaryBlue,
-                                ),
-                                filled: true,
-                                fillColor: const Color(0xFFF8FAFF),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(17),
-                                  borderSide: BorderSide.none,
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(17),
-                                  borderSide: const BorderSide(
-                                    color: Color(0xFFE2E8F0),
+                            ValueListenableBuilder<TextEditingValue>(
+                              valueListenable: nationalCodeController,
+                              builder: (context, value, _) {
+                                final isInvalid = value.text.trim().isNotEmpty &&
+                                    value.text.trim().length != 10;
+                                final fieldColor = isInvalid
+                                    ? const Color(0xFFDC2626)
+                                    : const Color(0xFFE2E8F0);
+                                final focusColor = isInvalid
+                                    ? const Color(0xFFDC2626)
+                                    : primaryBlue;
+
+                                return TextField(
+                                  controller: nationalCodeController,
+                                  textDirection: TextDirection.rtl,
+                                  textAlign: TextAlign.right,
+                                  keyboardType: TextInputType.number,
+                                  maxLength: 10,
+                                  textInputAction: TextInputAction.done,
+                                  onSubmitted: (_) => _startProcess(),
+                                  decoration: InputDecoration(
+                                    labelText: 'کد ملی',
+                                    hintText: 'مثال: ۱۲۳۴۵۶۷۸۹۰',
+                                    counterText: '',
+                                    labelStyle: TextStyle(
+                                      color: isInvalid
+                                          ? const Color(0xFFDC2626)
+                                          : null,
+                                    ),
+                                    prefixIcon: Icon(
+                                      Icons.badge_outlined,
+                                      color: isInvalid
+                                          ? const Color(0xFFDC2626)
+                                          : primaryBlue,
+                                    ),
+                                    filled: true,
+                                    fillColor: const Color(0xFFF8FAFF),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(17),
+                                      borderSide: isInvalid
+                                          ? BorderSide(color: fieldColor)
+                                          : BorderSide.none,
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(17),
+                                      borderSide: BorderSide(color: fieldColor),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(17),
+                                      borderSide: BorderSide(
+                                        color: focusColor,
+                                        width: 1.5,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(17),
-                                  borderSide: const BorderSide(
-                                    color: primaryBlue,
-                                    width: 1.5,
-                                  ),
-                                ),
-                              ),
+                                );
+                              },
                             ),
                           ],
                         ),
@@ -439,6 +459,3 @@ class _IssueCustomerInfoPageState extends State<IssueCustomerInfoPage> {
     }
   }
 }
-
-
-

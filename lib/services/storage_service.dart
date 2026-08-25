@@ -1,4 +1,3 @@
-
 import 'dart:io';
 
 import 'storage_settings_service.dart';
@@ -27,6 +26,15 @@ class StorageService {
     if (rootPath == null || rootPath.trim().isEmpty) {
       return null;
     }
+
+    // از ورود عکس‌های کارت‌ها به گالری گوشی جلوگیری می‌کند. با گذاشتن
+    // یک فایل خالی به نام «.nomedia» در ریشه‌ی مسیر ذخیره‌سازی، اسکنر
+    // رسانه‌ی اندروید کل این پوشه و همه‌ی زیرپوشه‌هایش (شارژ/صدور و...)
+    // را نادیده می‌گیرد و دیگر عکس‌ها را به برنامه‌ی گالری اضافه نمی‌کند.
+    // توجه: عکس‌هایی که از قبل در گالری دیده می‌شوند (قبل از این تغییر)
+    // ممکن است تا ریستارت گوشی یا اسکن مجدد رسانه همچنان آنجا بمانند؛
+    // اما از این به بعد عکس جدیدی وارد گالری نمی‌شود.
+    await _ensureNoMedia(rootPath);
 
     final workDate = await WorkDateService.getWorkDate();
 
@@ -88,6 +96,23 @@ class StorageService {
     }
   }
 
+  /// اگر فایل «.nomedia» در ریشه‌ی مسیر ذخیره‌سازی وجود نداشته باشد،
+  /// می‌سازدش. این کار idempotent است (اگر از قبل باشد، کاری نمی‌کند)
+  /// و اگر به هر دلیلی ساخت آن با خطا مواجه شود، جلوی ادامه‌ی ذخیره‌سازی
+  /// اصلی عکس‌ها را نمی‌گیرد — فقط ممکن است عکس‌ها در گالری هم دیده شوند.
+  static Future<void> _ensureNoMedia(String rootPath) async {
+    try {
+      final noMediaFile = File(
+        [rootPath, '.nomedia'].join(Platform.pathSeparator),
+      );
+      if (!await noMediaFile.exists()) {
+        await noMediaFile.create(recursive: true);
+      }
+    } catch (_) {
+      // نادیده گرفته می‌شود؛ نبود .nomedia فقط روی گالری اثر می‌گذارد.
+    }
+  }
+
   /// کاراکترهایی که در نام فایل/پوشه مجاز نیستند (به‌خصوص در ویندوز) را حذف می‌کند.
   static String _sanitize(String name) {
     final invalidChars = RegExp(r'[\\/:*?"<>|]');
@@ -137,6 +162,3 @@ class StorageService {
     return candidate;
   }
 }
-
-
-

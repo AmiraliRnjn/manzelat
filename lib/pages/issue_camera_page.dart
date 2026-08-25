@@ -1,4 +1,3 @@
-
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -7,6 +6,7 @@ import 'package:archive/archive_io.dart';
 import 'package:camera/camera.dart';
 import 'package:crop_image/crop_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:share_plus/share_plus.dart';
 
@@ -196,52 +196,78 @@ class _StyledTextField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
   final IconData icon;
+  // تعداد رقم مجاز برای این فیلد (کد ملی = ۱۰، تلفن = ۱۱). فقط رقم
+  // پذیرفته می‌شود و بعد از رسیدن به همین تعداد، تایپ بیشتر ممکن نیست.
+  final int maxLength;
 
   const _StyledTextField({
     required this.controller,
     required this.label,
     required this.icon,
+    required this.maxLength,
   });
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      keyboardType: TextInputType.number,
-      textDirection: TextDirection.rtl,
-      textAlign: TextAlign.right,
-      style: const TextStyle(
-        fontFamily: 'Traffic',
-        fontSize: 16,
-        color: Color(0xFF172554),
-      ),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(
-          fontFamily: 'Traffic',
-          fontSize: 13,
-          color: Color(0xFF64748B),
-        ),
-        prefixIcon: Icon(icon, color: const Color(0xFF1565C0)),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 16,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFF1565C0), width: 1.5),
-        ),
-      ),
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: controller,
+      builder: (context, value, _) {
+        // فقط وقتی چیزی تایپ شده ولی هنوز به تعداد رقم لازم نرسیده، قرمز
+        // می‌شود؛ فیلد خالی (هنوز دست نخورده) قرمز نیست.
+        final isInvalid = value.text.isNotEmpty && value.text.length != maxLength;
+        final fieldColor =
+            isInvalid ? const Color(0xFFDC2626) : const Color(0xFFE2E8F0);
+        final focusColor =
+            isInvalid ? const Color(0xFFDC2626) : const Color(0xFF1565C0);
+
+        return TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          textDirection: TextDirection.rtl,
+          textAlign: TextAlign.right,
+          maxLength: maxLength,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(maxLength),
+          ],
+          style: const TextStyle(
+            fontFamily: 'Traffic',
+            fontSize: 16,
+            color: Color(0xFF172554),
+          ),
+          decoration: InputDecoration(
+            labelText: label,
+            counterText: '',
+            labelStyle: TextStyle(
+              fontFamily: 'Traffic',
+              fontSize: 13,
+              color: isInvalid ? const Color(0xFFDC2626) : const Color(0xFF64748B),
+            ),
+            prefixIcon: Icon(
+              icon,
+              color: isInvalid ? const Color(0xFFDC2626) : const Color(0xFF1565C0),
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 16,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: fieldColor),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: fieldColor, width: isInvalid ? 1.4 : 1),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: focusColor, width: 1.5),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -822,6 +848,7 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
                     controller: textControllers[CardType.national]!,
                     label: 'کد ملی را وارد کنید',
                     icon: Icons.badge_outlined,
+                    maxLength: 10,
                   ),
 
                 if (_phoneNumberCardType != null) ...[
@@ -830,6 +857,7 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
                     controller: textControllers[_phoneNumberCardType]!,
                     label: 'شماره تلفن همراه را وارد کنید',
                     icon: Icons.phone_outlined,
+                    maxLength: 11,
                   ),
                 ],
 
@@ -891,6 +919,24 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
                 if (phoneCard != null && phoneNumber.isEmpty) {
                   _showStyledSnackBar(
                     'لطفاً شماره تلفن همراه را وارد کنید.',
+                    isError: true,
+                  );
+                  return;
+                }
+
+                // اعتبارسنجی تعداد رقم: کد ملی باید دقیقاً ۱۰ رقم و
+                // شماره تلفن باید دقیقاً ۱۱ رقم باشد.
+                if (hasNational && national.length != 10) {
+                  _showStyledSnackBar(
+                    'کد ملی باید ۱۰ رقم باشد.',
+                    isError: true,
+                  );
+                  return;
+                }
+
+                if (phoneCard != null && phoneNumber.length != 11) {
+                  _showStyledSnackBar(
+                    'شماره تلفن همراه باید ۱۱ رقم باشد.',
                     isError: true,
                   );
                   return;
@@ -1421,6 +1467,3 @@ class _IssueCameraPageState extends State<IssueCameraPage> {
     super.dispose();
   }
 }
-
-
-

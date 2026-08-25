@@ -1,5 +1,5 @@
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/customer_data.dart';
 import '../services/native_nfc_service.dart';
@@ -233,6 +233,11 @@ class _NfcPageState extends State<NfcPage>
 
     if (serial.isEmpty) {
       _showMessage('لطفاً سریال کارت بلیت را وارد کنید.', isError: true);
+      return;
+    }
+
+    if (serial.length != 10) {
+      _showMessage('سریال کارت بلیط باید ۱۰ رقم باشد.', isError: true);
       return;
     }
 
@@ -498,35 +503,55 @@ class _NfcPageState extends State<NfcPage>
       ),
       child: Column(
         children: [
-          TextField(
-            controller: manualController,
-            keyboardType: TextInputType.number,
-            textDirection: TextDirection.ltr,
-            textAlign: TextAlign.center,
-            decoration: InputDecoration(
-              labelText: 'سریال کارت بلیت',
-              hintText: 'سریال را وارد کنید',
-              prefixIcon: const Icon(Icons.confirmation_number_outlined),
-              filled: true,
-              fillColor: background,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(18),
-                borderSide: const BorderSide(color: border),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(18),
-                borderSide: const BorderSide(color: border),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(18),
-                borderSide: const BorderSide(
-                  color: primaryBlue,
-                  width: 1.5,
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: manualController,
+            builder: (context, value, _) {
+              final isInvalid =
+                  value.text.isNotEmpty && value.text.length != 10;
+              final fieldColor = isInvalid ? const Color(0xFFDC2626) : border;
+              final focusColor =
+                  isInvalid ? const Color(0xFFDC2626) : primaryBlue;
+
+              return TextField(
+                controller: manualController,
+                keyboardType: TextInputType.number,
+                textDirection: TextDirection.ltr,
+                textAlign: TextAlign.center,
+                maxLength: 10,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(10),
+                ],
+                decoration: InputDecoration(
+                  labelText: 'سریال کارت بلیت',
+                  hintText: 'سریال را وارد کنید',
+                  counterText: '',
+                  prefixIcon: Icon(
+                    Icons.confirmation_number_outlined,
+                    color: isInvalid ? const Color(0xFFDC2626) : null,
+                  ),
+                  filled: true,
+                  fillColor: background,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(18),
+                    borderSide: BorderSide(color: fieldColor),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(18),
+                    borderSide: BorderSide(color: fieldColor),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(18),
+                    borderSide: BorderSide(color: focusColor, width: 1.5),
+                  ),
+                  labelStyle: TextStyle(
+                    fontFamily: 'Traffic',
+                    color: isInvalid ? const Color(0xFFDC2626) : null,
+                  ),
+                  hintStyle: const TextStyle(fontFamily: 'Traffic'),
                 ),
-              ),
-              labelStyle: const TextStyle(fontFamily: 'Traffic'),
-              hintStyle: const TextStyle(fontFamily: 'Traffic'),
-            ),
+              );
+            },
           ),
           const SizedBox(height: 16),
           _primaryButton(
@@ -597,6 +622,3 @@ class _NfcPageState extends State<NfcPage>
     );
   }
 }
-
-
-
