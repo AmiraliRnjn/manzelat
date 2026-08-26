@@ -298,15 +298,28 @@ class FileManagerService {
   /// ZIP واحد به نام [allZipsFileName] در همان پوشه‌ی روز قرار می‌دهد.
   /// فایل‌های اصلی مشتری‌ها دست‌نخورده باقی می‌مانند؛ فقط یک نسخه از
   /// آن‌ها داخل ZIP جدید کپی می‌شود.
-  static Future<File> zipAllCustomerZips(OperationType operationType) async {
+  ///
+  /// اگر [zipsOverride] داده شود، فقط همان فایل‌ها ترکیب می‌شوند (مثلاً
+  /// وقتی کاربر فقط سبزها/انجام‌شده‌ها را می‌خواهد زیپ کند)؛ در غیر این
+  /// صورت همه‌ی ZIPهای روز (به‌جز ZIP ترکیبی قبلی) ترکیب می‌شوند.
+  ///
+  /// اگر نام (بدون پسوند) یکی از فایل‌ها داخل [markIncompleteNames] باشد،
+  /// همان فایل داخل آرشیو با پیشوند «انجام نشده - » ذخیره می‌شود تا وقتی
+  /// روی سیستم/لپ‌تاپ باز شد، مشخص باشد کدام مشتری هنوز رسیدش نیامده.
+  static Future<File> zipAllCustomerZips(
+    OperationType operationType, {
+    List<File>? zipsOverride,
+    Set<String> markIncompleteNames = const {},
+  }) async {
     final dayFolder = await getDayFolder(operationType);
     if (dayFolder == null || !await dayFolder.exists()) {
       throw FileSystemException('پوشه‌ی این تاریخ وجود ندارد.');
     }
 
-    final zips = (await getCustomerZipFiles(operationType))
-        .where((f) => displayName(f) != allZipsFileName)
-        .toList();
+    final zips = zipsOverride ??
+        (await getCustomerZipFiles(operationType))
+            .where((f) => displayName(f) != allZipsFileName)
+            .toList();
 
     if (zips.isEmpty) {
       throw FileSystemException('فایل ZIP‌ای برای ترکیب کردن وجود ندارد.');
@@ -333,7 +346,11 @@ class FileManagerService {
               zip.path,
             );
           }
-          await encoder.addFile(zip);
+          final name = displayName(zip);
+          final archiveName = markIncompleteNames.contains(name)
+              ? 'انجام نشده - $name.zip'
+              : '$name.zip';
+          await encoder.addFile(zip, archiveName);
         }
       } finally {
         await encoder.close();

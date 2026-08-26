@@ -11,6 +11,7 @@ import '../services/work_date_service.dart';
 import '../services/worker_selection_service.dart';
 import '../services/storage_settings_service.dart';
 import '../app_enum.dart';
+import '../widgets/work_calendar_picker.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -60,7 +61,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _pickWorkDate() async {
-    final picked = await showPersianDatePicker(
+    final picked = await showWorkCalendarPicker(
       context: context,
       initialDate: workDate ?? Jalali.now(),
       firstDate: Jalali(1400, 1),

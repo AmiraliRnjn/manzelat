@@ -6,6 +6,7 @@ import '../services/permission_service.dart';
 import '../services/storage_picker_service.dart';
 import '../services/work_date_service.dart';
 import '../services/backup_service.dart';
+import '../widgets/work_calendar_picker.dart';
 import 'backup_page.dart';
 import 'logs_page.dart';
 import 'home_page.dart';
@@ -93,7 +94,7 @@ class _SettingsPageState extends State<SettingsPage>
   }
 
   Future<void> _pickWorkDate() async {
-    final picked = await showPersianDatePicker(
+    final picked = await showWorkCalendarPicker(
       context: context,
       initialDate: workDate ?? Jalali.now(),
       firstDate: Jalali(1400, 1),

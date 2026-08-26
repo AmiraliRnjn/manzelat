@@ -13,6 +13,9 @@ import '../services/file_manager_service.dart';
 import '../services/customer_status_service.dart';
 import '../services/receipt_service.dart';
 
+/// انتخاب کاربر وقتی بین ZIPهای قابل ترکیب، فایل بدون رسید وجود دارد.
+enum _ZipAllChoice { completedOnly, ignoreAll }
+
 class FileManagerPage extends StatefulWidget {
   final OperationType operationType;
 
@@ -197,6 +200,12 @@ class _FileManagerPageState extends State<FileManagerPage> {
   /// همه‌ی ZIP‌های موجود این تاریخ را در یک ZIP واحد به نام
   /// [FileManagerService.allZipsFileName] ترکیب می‌کند تا بشود یک‌جا
   /// برای سرپرست ارسال کرد. نتیجه در همین تب ZIP نمایش داده می‌شود.
+  ///
+  /// اگر بین ZIPها فایل قرمز (ارسال‌نشده) یا زرد (در انتظار رسید) باشد،
+  /// قبل از ادامه از کاربر می‌پرسیم: فقط انجام‌شده‌ها (سبزها) زیپ شوند،
+  /// یا انجام‌نشده‌ها نادیده گرفته شوند و همه یک‌جا زیپ شوند. در حالت دوم،
+  /// نام فایل‌های انجام‌نشده داخل خودِ ZIP ترکیبی با «انجام نشده - »
+  /// مشخص می‌شود تا روی سیستم/لپ‌تاپ هم معلوم باشد.
   Future<void> _zipAllForSending() async {
     final combinable = zipFiles
         .where(
@@ -206,23 +215,48 @@ class _FileManagerPageState extends State<FileManagerPage> {
         )
         .toList();
 
-    // اگر بین ZIPهایی که قرار است ترکیب شوند، فایل قرمز (هنوز ارسال
-    // نشده) وجود دارد، قبل از ادامه به کاربر هشدار می‌دهیم؛ ولی خودِ
-    // عملیات ترکیب را متوقف نمی‌کنیم چون هدف این گزینه دقیقاً همین است
-    // که همه (چه ارسال‌شده چه نشده) یک‌جا برای ارسال آماده شوند.
-    final redCount = combinable
-        .where((f) => _statusFor(f) == ReminderStatus.notSent)
-        .length;
-
-    if (redCount > 0) {
-      final confirmedDespiteRed = await _confirmAction(
-        title: 'فایل‌های ارسال‌نشده وجود دارند',
-        message:
-            '$redCount فایل ZIP قرمز (هنوز برای سرپرست ارسال نشده) هم بین این فایل‌ها هست. با این حال همه‌ی فایل‌ها با هم زیپ شوند؟',
-        confirmLabel: 'زیپ کردن همه',
-        danger: true,
+    if (combinable.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('فایل ZIP‌ای برای ترکیب کردن وجود ندارد.')),
       );
-      if (confirmedDespiteRed != true) return;
+      return;
+    }
+
+    // هر فایلی که رسیدش نیامده (چه قرمز/ارسال‌نشده، چه زرد/در انتظار
+    // رسید) «بدون رسید» حساب می‌شود.
+    final incomplete = combinable
+        .where((f) => _statusFor(f) != ReminderStatus.receiptReceived)
+        .toList();
+    final completedOnly = combinable
+        .where((f) => _statusFor(f) == ReminderStatus.receiptReceived)
+        .toList();
+
+    List<File> zipsToCombine = combinable;
+    Set<String> incompleteNamesToMark = {};
+
+    if (incomplete.isNotEmpty) {
+      final choice = await _askZipAllChoice(incomplete.length);
+      if (choice == null) return;
+
+      if (choice == _ZipAllChoice.completedOnly) {
+        if (completedOnly.isEmpty) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('هیچ فایل انجام‌شده‌ای (سبز) برای زیپ کردن وجود ندارد.'),
+            ),
+          );
+          return;
+        }
+        zipsToCombine = completedOnly;
+      } else {
+        // نادیده گرفتن انجام‌نشده‌ها: همه با هم زیپ می‌شوند، ولی نام
+        // فایل‌های ناقص داخل آرشیو مشخص می‌شود.
+        zipsToCombine = combinable;
+        incompleteNamesToMark = incomplete
+            .map((f) => FileManagerService.displayName(f))
+            .toSet();
+      }
     }
 
     final alreadyExists = zipFiles.any(
@@ -242,7 +276,11 @@ class _FileManagerPageState extends State<FileManagerPage> {
     }
 
     try {
-      await FileManagerService.zipAllCustomerZips(widget.operationType);
+      await FileManagerService.zipAllCustomerZips(
+        widget.operationType,
+        zipsOverride: zipsToCombine,
+        markIncompleteNames: incompleteNamesToMark,
+      );
 
       if (!mounted) return;
 
@@ -257,6 +295,94 @@ class _FileManagerPageState extends State<FileManagerPage> {
         SnackBar(content: Text('ساخت ZIP ترکیبی با خطا مواجه شد: $e')),
       );
     }
+  }
+
+  /// از کاربر می‌پرسد وقتی [incompleteCount] فایل بدون رسید (قرمز/زرد)
+  /// بین ZIPهای قابل ترکیب هست، چه کار کند.
+  Future<_ZipAllChoice?> _askZipAllChoice(int incompleteCount) {
+    return showDialog<_ZipAllChoice>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          title: const Text(
+            'فایل‌های بدون رسید وجود دارند',
+            textDirection: TextDirection.rtl,
+            style: TextStyle(
+              fontFamily: 'Traffic',
+              color: _darkText,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            '$incompleteCount پوشه بدون رسید داری (قرمز یا زرد). می‌خوای فقط انجام‌شده‌ها (سبزها) زیپ بشن، یا انجام‌نشده‌ها رو نادیده بگیریم و همه با هم زیپ بشن؟',
+            textDirection: TextDirection.rtl,
+            style: const TextStyle(
+              fontFamily: 'Traffic',
+              color: _secondaryText,
+              fontSize: 14,
+            ),
+          ),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+          actions: [
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(
+                    dialogContext,
+                    _ZipAllChoice.completedOnly,
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _green,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: const Text(
+                    'زیپ کردن انجام‌شده‌ها (سبزها)',
+                    style: TextStyle(fontFamily: 'Traffic'),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton(
+                  onPressed: () => Navigator.pop(
+                    dialogContext,
+                    _ZipAllChoice.ignoreAll,
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFE84C4C),
+                    side: const BorderSide(color: Color(0xFFE84C4C)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: const Text(
+                    'نادیده گرفتن انجام‌نشده‌ها و زیپ همه',
+                    style: TextStyle(fontFamily: 'Traffic'),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text(
+                    'انصراف',
+                    style: TextStyle(fontFamily: 'Traffic'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _deleteFolder(Directory folder) async {
