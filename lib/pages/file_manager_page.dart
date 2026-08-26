@@ -12,6 +12,7 @@ import '../reminder_status.dart';
 import '../services/file_manager_service.dart';
 import '../services/customer_status_service.dart';
 import '../services/receipt_service.dart';
+import '../services/route_observer.dart';
 
 /// انتخاب کاربر وقتی بین ZIPهای قابل ترکیب، فایل بدون رسید وجود دارد.
 enum _ZipAllChoice { completedOnly, ignoreAll }
@@ -25,7 +26,7 @@ class FileManagerPage extends StatefulWidget {
   State<FileManagerPage> createState() => _FileManagerPageState();
 }
 
-class _FileManagerPageState extends State<FileManagerPage> {
+class _FileManagerPageState extends State<FileManagerPage> with RouteAware {
   static const Color _primaryBlue = Color(0xFF1565C0);
   static const Color _purple = Color.fromARGB(255, 128, 68, 232);
   static const Color _green = Color.fromARGB(255, 59, 211, 122);
@@ -48,6 +49,32 @@ class _FileManagerPageState extends State<FileManagerPage> {
     _searchController.addListener(() {
       setState(() => _query = _searchController.text.trim());
     });
+    _loadData();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // این صفحه را برای اطلاع از باز/بسته شدن صفحه‌های بالای آن (مثلاً
+    // صفحه‌ی ثبت رسید که با اشتراک‌گذاری باز می‌شود) در RouteObserver
+    // عمومی ثبت می‌کنیم.
+    appRouteObserver.subscribe(this, ModalRoute.of(context)! as PageRoute<void>);
+  }
+
+  @override
+  void dispose() {
+    appRouteObserver.unsubscribe(this);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  /// وقتی صفحه‌ای که روی این صفحه باز شده بود (مثلاً ثبت رسید از طریق
+  /// اشتراک‌گذاری، یا صفحه‌ی جزئیات پوشه) بسته می‌شود و این صفحه دوباره
+  /// نمایان می‌شود، اجرا می‌شود. قبلاً این‌جا رفرش نمی‌شد و کاربر باید کامل
+  /// از صفحه‌ی مدیریت فایل خارج و دوباره وارد می‌شد تا نقطه‌ی رنگی (مثلاً
+  /// بعد از ثبت رسید) به‌روز شود؛ حالا بلافاصله بعد از برگشت رفرش می‌شود.
+  @override
+  void didPopNext() {
     _loadData();
   }
 

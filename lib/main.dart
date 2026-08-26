@@ -10,6 +10,7 @@ import 'pages/charge_page.dart';
 import 'pages/receipt_target_page.dart';
 import 'services/backup_service.dart';
 import 'services/log_service.dart';
+import 'services/route_observer.dart';
 //import 'issue_page.dart';
 
 void main() {
@@ -134,6 +135,11 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       ],
 
       initialRoute: '/',
+
+      // برای اینکه صفحه‌هایی مثل مدیریت فایل بفهمند کِی صفحه‌ی روی‌شان
+      // (مثلاً صفحه‌ی ثبت رسید که با اشتراک‌گذاری باز می‌شود) بسته شده و
+      // باید اطلاعاتشان را رفرش کنند.
+      navigatorObservers: [appRouteObserver],
 
       routes: {
         '/': (context) => HomePage(),
