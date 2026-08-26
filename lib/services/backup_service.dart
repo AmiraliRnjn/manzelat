@@ -188,6 +188,7 @@ class BackupService {
         'work_date_month': workDate.month,
         'work_date_day': workDate.day,
         'receipt_keys': prefs.getStringList('customer_receipt_keys') ?? const [],
+        'sent_keys': prefs.getStringList('customer_sent_keys') ?? const [],
         'auto_backup_enabled': prefs.getBool(_autoEnabledKey) ?? false,
         'auto_backup_interval_days': prefs.getInt(_autoIntervalDaysKey) ?? 1,
       };
@@ -459,6 +460,17 @@ class BackupService {
               final currentReceipts = prefs.getStringList('customer_receipt_keys')?.toSet() ?? <String>{};
               final mergedReceipts = {...currentReceipts, ...backupReceipts}.toList()..sort();
               await prefs.setStringList('customer_receipt_keys', mergedReceipts);
+
+              // «سبز» (رسید دریافت‌شده) قبلاً این‌جا Merge می‌شد ولی «زرد»
+              // (فرستاده‌شده، در انتظار رسید) اصلاً ذخیره/بازیابی نمی‌شد؛ یعنی
+              // بعد از Restore/Merge یک Backup، مشتری‌های زرد دوباره قرمز
+              // نشان داده می‌شدند. حالا همان‌طور union می‌شود.
+              final backupSent = decoded['sent_keys'] is List
+                  ? (decoded['sent_keys'] as List).whereType<String>().toSet()
+                  : <String>{};
+              final currentSent = prefs.getStringList('customer_sent_keys')?.toSet() ?? <String>{};
+              final mergedSent = {...currentSent, ...backupSent}.toList()..sort();
+              await prefs.setStringList('customer_sent_keys', mergedSent);
 
               // در Merge، تاریخ و تنظیمات دستگاه مقصد تغییر نمی‌کنند. در Restore
               // جایگزین‌کننده، وضعیت Backup اعمال می‌شود.
