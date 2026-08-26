@@ -87,11 +87,58 @@ class FileManagerService {
     final sanitized = _sanitize(newName);
 
     if (entity is File) {
+      final isZip = entity.path.toLowerCase().endsWith('.zip');
       final parentPath = entity.parent.path;
-      final targetName = entity.path.toLowerCase().endsWith('.zip')
-          ? '$sanitized.zip'
-          : sanitized;
-      return entity.rename('$parentPath${Platform.pathSeparator}$targetName');
+      final targetName = isZip ? '$sanitized.zip' : sanitized;
+      final targetPath = '$parentPath${Platform.pathSeparator}$targetName';
+
+      // فقط فایل‌های ZIP نماینده‌ی یک مشتری‌اند (هم‌نام با پوشه‌اش)؛
+      // فایل‌های دیگر (مثلاً عکس‌های داخل پوشه) نیازی به این هماهنگی ندارند.
+      if (!isZip) {
+        return entity.rename(targetPath);
+      }
+
+      final oldName = displayName(entity);
+      if (oldName == sanitized) return entity.rename(targetPath);
+
+      // اگر پوشه‌ی مشتری هم‌نامِ ZIP (با نام قدیمش) کنارش باشد، همزمان با
+      // خودِ ZIP رنیم می‌شود. پوشه و ZIP هم‌نام هر دو نماینده‌ی یک مشتری‌اند
+      // و کلید وضعیت (قرمز/زرد/سبز) بین‌شان مشترک است؛ رنیم مستقلِ فقط ZIP
+      // (بدون این هماهنگی) باعث می‌شد نامشان دیگر یکی نباشد و پوشه از
+      // وضعیت رنگی مشترک جدا بیفتد.
+      final oldFolder = Directory(
+        '$parentPath${Platform.pathSeparator}$oldName',
+      );
+      final newFolder = Directory(
+        '$parentPath${Platform.pathSeparator}$sanitized',
+      );
+
+      if (await File(targetPath).exists()) {
+        throw Exception('فایل ZIP با نام «$sanitized» از قبل وجود دارد.');
+      }
+      if (await newFolder.exists()) {
+        throw Exception('پوشه‌ای با نام «$sanitized» از قبل وجود دارد.');
+      }
+
+      var folderRenamed = false;
+      try {
+        if (await oldFolder.exists()) {
+          await oldFolder.rename(newFolder.path);
+          folderRenamed = true;
+        }
+        final renamedZip = await entity.rename(targetPath);
+        await CustomerStatusService.transfer(entity.path, renamedZip.path);
+        return renamedZip;
+      } catch (_) {
+        if (folderRenamed &&
+            await newFolder.exists() &&
+            !await oldFolder.exists()) {
+          try {
+            await newFolder.rename(oldFolder.path);
+          } catch (_) {}
+        }
+        rethrow;
+      }
     }
 
     final folder = entity as Directory;

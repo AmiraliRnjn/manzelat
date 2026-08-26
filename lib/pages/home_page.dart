@@ -10,6 +10,7 @@ import 'file_manager_page.dart';
 import '../services/work_date_service.dart';
 import '../services/worker_selection_service.dart';
 import '../services/storage_settings_service.dart';
+import '../services/customer_status_service.dart';
 import '../app_enum.dart';
 import '../widgets/work_calendar_picker.dart';
 
@@ -212,6 +213,15 @@ class _HomePageState extends State<HomePage> {
   /// از تغییر کاربر، همگی در یک پوشه بمانند. [oldDayName] باید نام پوشه‌ی
   /// روز قبل از ذخیره‌ی نام کاربر جدید باشد (نه لزوماً نام خام تاریخ)،
   /// وگرنه رنیم‌های بعد از اولین بار اثر نمی‌کنند.
+  ///
+  /// نکته‌ی مهم: وضعیت قرمز/زرد/سبز هر مشتری در CustomerStatusService با
+  /// مسیر کامل پوشه‌ی همان مشتری ذخیره می‌شود. وقتی پوشه‌ی روز رنیم
+  /// می‌شود، مسیر همه‌ی مشتری‌های داخلش هم عوض می‌شود، ولی خودِ رنیم چیزی
+  /// درباره‌اش به CustomerStatusService نمی‌گوید؛ بدون این کار، بعد از هر
+  /// تغییر کاربر روز، وضعیت همه‌ی مشتری‌ها دوباره قرمز نشان داده می‌شد چون
+  /// کلید ذخیره‌شده دیگر با مسیر جدید یکی نبود. برای همین قبل از هر رنیم،
+  /// لیست فرزندان (پوشه‌های مشتری و ZIP‌ها) را برمی‌داریم و بعد از رنیم،
+  /// وضعیت هرکدام را هم به مسیر جدید منتقل می‌کنیم.
   Future<void> _renameExistingDayFolders(Jalali date, String oldDayName) async {
     final rootPath = await StorageSettingsService.getStoragePath();
     if (rootPath == null || rootPath.trim().isEmpty) return;
@@ -237,14 +247,69 @@ class _HomePageState extends State<HomePage> {
         [parentPath, newDayName].join(Platform.pathSeparator),
       );
 
-      if (await oldDir.exists() && !await newDir.exists()) {
+      if (!await oldDir.exists()) continue;
+
+      if (!await newDir.exists()) {
+        // ساده‌ترین حالت: پوشه‌ی جدید هنوز وجود ندارد؛ کل پوشه‌ی روز را
+        // یکجا رنیم می‌کنیم، ولی قبلش فرزندانش را برمی‌داریم تا بعداً
+        // بتوانیم وضعیت هرکدام را هم منتقل کنیم.
+        final children = oldDir.listSync();
         try {
           await oldDir.rename(newDir.path);
+          await _transferChildrenStatus(children, oldDir.path, newDir.path);
         } catch (_) {
           // اگر تغییر نام با خطا مواجه شود، پوشه با نام قبلی باقی می‌ماند
           // و همچنان قابل استفاده است؛ فقط نام کاربر کنارش نوشته نشده.
         }
+      } else {
+        // پوشه‌ی جدید از قبل وجود دارد (مثلاً قبلاً هم همین کاربر برای
+        // این روز انتخاب شده بود). این‌جا کل پوشه رنیم نمی‌شود؛ هر
+        // مشتری/ZIP تک‌تک به داخل پوشه‌ی جدید منتقل می‌شود تا چیزی گم یا
+        // بی‌رنگ نشود.
+        final children = oldDir.listSync();
+        for (final child in children) {
+          final name = child.path.split(Platform.pathSeparator).last;
+          final targetPath = [newDir.path, name].join(Platform.pathSeparator);
+
+          if (await FileSystemEntity.type(targetPath) !=
+              FileSystemEntityType.notFound) {
+            // هم‌نام از قبل داخل پوشه‌ی جدید وجود دارد؛ برای جلوگیری از
+            // بازنویسی تصادفی، این یکی دست‌نخورده در پوشه‌ی قدیمی می‌ماند.
+            continue;
+          }
+
+          try {
+            final oldPath = child.path;
+            await child.rename(targetPath);
+            await CustomerStatusService.transfer(oldPath, targetPath);
+          } catch (_) {
+            // انتقال این مورد با خطا مواجه شد؛ برای بقیه ادامه می‌دهیم.
+          }
+        }
+
+        if (oldDir.listSync().isEmpty) {
+          try {
+            await oldDir.delete();
+          } catch (_) {}
+        }
       }
+    }
+  }
+
+  /// وضعیت (فرستاده‌شده/رسید) هر فرزندِ [children] را از زیرِ [oldDirPath]
+  /// به زیرِ [newDirPath] منتقل می‌کند. باید بعد از رنیم موفق پوشه‌ی
+  /// والد صدا زده شود؛ [children] باید قبل از رنیم گرفته شده باشد چون
+  /// بعد از رنیم، مسیر آن Directory/File های قدیمی دیگر معتبر نیستند.
+  Future<void> _transferChildrenStatus(
+    List<FileSystemEntity> children,
+    String oldDirPath,
+    String newDirPath,
+  ) async {
+    for (final child in children) {
+      final name = child.path.split(Platform.pathSeparator).last;
+      final oldPath = [oldDirPath, name].join(Platform.pathSeparator);
+      final newPath = [newDirPath, name].join(Platform.pathSeparator);
+      await CustomerStatusService.transfer(oldPath, newPath);
     }
   }
 
