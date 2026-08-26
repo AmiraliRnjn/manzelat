@@ -739,6 +739,167 @@ class _FileManagerPageState extends State<FileManagerPage> with RouteAware {
     );
   }
 
+  /// دیالوگ گرفتن «دلیل» برای سبز کردن دستی یک پوشه/فایل. متن خالی مجاز
+  /// نیست (دکمه تایید غیرفعال می‌ماند) چون این دلیل قرار است به نام فایل
+  /// اضافه شود و باید همیشه معنادار باشد.
+  Future<String?> _askForReason({required String title}) async {
+    final controller = TextEditingController();
+
+    return showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            final isValid = controller.text.trim().isNotEmpty;
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              title: Text(
+                title,
+                textDirection: TextDirection.rtl,
+                style: const TextStyle(
+                  fontFamily: 'Traffic',
+                  color: _darkText,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              content: TextField(
+                controller: controller,
+                autofocus: true,
+                textDirection: TextDirection.rtl,
+                maxLines: 2,
+                onChanged: (_) => setDialogState(() {}),
+                style: const TextStyle(fontFamily: 'Traffic'),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: const Color(0xFFF7F8FB),
+                  hintText: 'دلیل سبز کردن را بنویسید',
+                  hintStyle: const TextStyle(
+                    fontFamily: 'Traffic',
+                    color: Color(0xFF9AA0AD),
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                    borderSide: const BorderSide(color: Color(0xFFE3E6EC)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                    borderSide: const BorderSide(color: Color(0xFFE3E6EC)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                    borderSide: const BorderSide(color: _green, width: 1.5),
+                  ),
+                ),
+              ),
+              actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text(
+                    'انصراف',
+                    style: TextStyle(fontFamily: 'Traffic'),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: isValid
+                      ? () => Navigator.pop(dialogContext, controller.text.trim())
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _green,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: const Text(
+                    'سبز کردن',
+                    style: TextStyle(fontFamily: 'Traffic'),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// سبز کردن دستی یک پوشه‌ی مشتری «به هر دلیل» (مثلاً وقتی رسید واقعی
+  /// نمی‌آید ولی کار نباید گیر کند). دلیل به‌عنوان ادامه‌ی نام پوشه اضافه
+  /// می‌شود تا بعداً هم مشخص باشد چرا این مشتری بدون رسید سبز شده، و اگر
+  /// ZIP هم‌نامی موجود باشد (که کلید وضعیتش با پوشه مشترک است) با همان نام
+  /// جدید هماهنگ می‌شود تا رنگش هم سبز بماند.
+  Future<void> _markFolderGreenWithReason(Directory folder) async {
+    final reason = await _askForReason(title: 'سبز کردن پوشه به دلیل خاص');
+    if (reason == null || reason.isEmpty) return;
+
+    final oldName = FileManagerService.displayName(folder);
+    final newName = '$oldName - $reason';
+
+    try {
+      final renamedFolder =
+          await FileManagerService.rename(folder, newName) as Directory;
+
+      await CustomerStatusService.transfer(folder.path, renamedFolder.path);
+
+      final parentPath = renamedFolder.parent.path;
+      final matchingZip = File(
+        [parentPath, '$oldName.zip'].join(Platform.pathSeparator),
+      );
+      if (await matchingZip.exists()) {
+        await FileManagerService.rename(matchingZip, newName);
+      }
+
+      await CustomerStatusService.markReceiptReceived(renamedFolder.path);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('پوشه سبز شد و دلیل به نام آن اضافه شد.')),
+      );
+
+      await _loadData();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('خطا در سبز کردن: $e')));
+    }
+  }
+
+  /// نسخه‌ی ZIP همان قابلیت بالا؛ برای وقتی که خودِ فایل ZIP (نه پوشه)
+  /// نیاز به سبز شدن دستی دارد.
+  Future<void> _markZipGreenWithReason(File zip) async {
+    final reason = await _askForReason(title: 'سبز کردن ZIP به دلیل خاص');
+    if (reason == null || reason.isEmpty) return;
+
+    final oldName = FileManagerService.displayName(zip);
+    final newName = '$oldName - $reason';
+
+    try {
+      final renamedZip =
+          await FileManagerService.rename(zip, newName) as File;
+      await CustomerStatusService.transfer(zip.path, renamedZip.path);
+      await CustomerStatusService.markReceiptReceived(renamedZip.path);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('فایل ZIP سبز شد و دلیل به نام آن اضافه شد.')),
+      );
+
+      await _loadData();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('خطا در سبز کردن: $e')));
+    }
+  }
+
   Future<bool?> _confirmAction({
     required String title,
     required String message,
@@ -1146,6 +1307,9 @@ class _FileManagerPageState extends State<FileManagerPage> with RouteAware {
                   case 'share':
                     _shareFolder(folder);
                     break;
+                  case 'greenReason':
+                    _markFolderGreenWithReason(folder);
+                    break;
                   case 'delete':
                     _deleteFolder(folder);
                     break;
@@ -1156,6 +1320,13 @@ class _FileManagerPageState extends State<FileManagerPage> with RouteAware {
                 PopupMenuItem(value: 'rename', child: Text('تغییر نام')),
                 PopupMenuItem(value: 'zip', child: Text('زیپ کردن')),
                 PopupMenuItem(value: 'share', child: Text('اشتراک‌گذاری')),
+                PopupMenuItem(
+                  value: 'greenReason',
+                  child: Text(
+                    'سبز کردن (با دلیل)',
+                    style: TextStyle(color: Color(0xFF2E7D32)),
+                  ),
+                ),
                 PopupMenuItem(
                   value: 'delete',
                   child: Text(
@@ -1342,6 +1513,9 @@ class _FileManagerPageState extends State<FileManagerPage> with RouteAware {
                   case 'share':
                     _shareZip(zip);
                     break;
+                  case 'greenReason':
+                    _markZipGreenWithReason(zip);
+                    break;
                   case 'delete':
                     _deleteZip(zip);
                     break;
@@ -1350,6 +1524,13 @@ class _FileManagerPageState extends State<FileManagerPage> with RouteAware {
               itemBuilder: (context) => const [
                 PopupMenuItem(value: 'rename', child: Text('تغییر نام')),
                 PopupMenuItem(value: 'share', child: Text('اشتراک‌گذاری')),
+                PopupMenuItem(
+                  value: 'greenReason',
+                  child: Text(
+                    'سبز کردن (با دلیل)',
+                    style: TextStyle(color: Color(0xFF2E7D32)),
+                  ),
+                ),
                 PopupMenuItem(
                   value: 'delete',
                   child: Text(

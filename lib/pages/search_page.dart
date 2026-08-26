@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../reminder_status.dart';
 import '../services/customer_status_service.dart';
 import '../services/file_manager_service.dart';
 import '../services/search_service.dart';
@@ -29,13 +30,38 @@ class _SearchPageState extends State<SearchPage> {
   String _lastQuery = '';
   int _requestId = 0;
 
+  // وضعیت یادآور (قرمز/زرد/سبز) هر مشتری، همان چیزی که صفحه‌ی مدیریت
+  // فایل نشان می‌دهد؛ قبلاً این‌جا اصلاً بارگذاری نمی‌شد و نتیجه‌ی جستجو
+  // هیچ نقطه‌ی رنگی‌ای نداشت.
+  Set<String> sentKeys = {};
+  Set<String> receiptKeys = {};
+
   @override
   void initState() {
     super.initState();
     _controller.addListener(_onQueryChanged);
+    _loadStatusKeys();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _focusNode.requestFocus();
     });
+  }
+
+  Future<void> _loadStatusKeys() async {
+    final sent = await CustomerStatusService.getSentKeys();
+    final receipts = await CustomerStatusService.getReceiptKeys();
+    if (!mounted) return;
+    setState(() {
+      sentKeys = sent;
+      receiptKeys = receipts;
+    });
+  }
+
+  ReminderStatus _statusFor(SearchResult result) {
+    return CustomerStatusService.statusFor(
+      result.path,
+      sentKeys: sentKeys,
+      receiptKeys: receiptKeys,
+    );
   }
 
   void _onQueryChanged() {
@@ -72,6 +98,7 @@ class _SearchPageState extends State<SearchPage> {
   /// دوباره همان جستجوی آخر را اجرا می‌کند؛ بعد از رنیم/حذف/زیپ لازم است
   /// تا لیست نتایج با وضعیت جدید فایل‌ها هماهنگ بماند.
   Future<void> _refreshResults() async {
+    await _loadStatusKeys();
     if (_lastQuery.isEmpty) return;
     final request = ++_requestId;
     final results = await SearchService.search(_lastQuery);
@@ -226,6 +253,11 @@ class _SearchPageState extends State<SearchPage> {
     }
 
     await CustomerStatusService.markSent(folder.path);
+
+    if (!mounted) return;
+    setState(() {
+      sentKeys.add(CustomerStatusService.keyForPath(folder.path));
+    });
   }
 
   // -------------------------------- اکشن‌های ZIP --------------------------------
@@ -296,6 +328,139 @@ class _SearchPageState extends State<SearchPage> {
     }
 
     await CustomerStatusService.markSent(zip.path);
+
+    if (!mounted) return;
+    setState(() {
+      sentKeys.add(CustomerStatusService.keyForPath(zip.path));
+    });
+  }
+
+  // ---------------------------- سبز کردن دستی (سه‌نقطه) ----------------------------
+
+  /// دیالوگ گرفتن «دلیل» برای سبز کردن دستی؛ متن خالی مجاز نیست چون این
+  /// دلیل قرار است به نام فایل اضافه شود.
+  Future<String?> _askForReason({required String title}) async {
+    final controller = TextEditingController();
+
+    return showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            final isValid = controller.text.trim().isNotEmpty;
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              title: Text(
+                title,
+                textDirection: TextDirection.rtl,
+                style: const TextStyle(
+                  fontFamily: 'Traffic',
+                  color: darkText,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              content: TextField(
+                controller: controller,
+                autofocus: true,
+                textDirection: TextDirection.rtl,
+                maxLines: 2,
+                onChanged: (_) => setDialogState(() {}),
+                style: const TextStyle(fontFamily: 'Traffic'),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: const Color(0xFFF7F8FB),
+                  hintText: 'دلیل سبز کردن را بنویسید',
+                  hintStyle: const TextStyle(fontFamily: 'Traffic', color: Color(0xFF9AA0AD)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                    borderSide: const BorderSide(color: Color(0xFFE3E6EC)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                    borderSide: const BorderSide(color: Color(0xFFE3E6EC)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                    borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 1.5),
+                  ),
+                ),
+              ),
+              actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('انصراف', style: TextStyle(fontFamily: 'Traffic')),
+                ),
+                ElevatedButton(
+                  onPressed: isValid
+                      ? () => Navigator.pop(dialogContext, controller.text.trim())
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2E7D32),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: const Text('سبز کردن', style: TextStyle(fontFamily: 'Traffic')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// سبز کردن دستی «به هر دلیل» — دلیل به‌عنوان ادامه‌ی نام پوشه/فایل اضافه
+  /// می‌شود تا بعداً هم معلوم باشد چرا بدون رسید سبز شده، و کار سرپرست/ارسال
+  /// روی این مشتری گیر نکند.
+  Future<void> _markGreenWithReason(SearchResult result) async {
+    final title = result.isDirectory ? 'سبز کردن پوشه به دلیل خاص' : 'سبز کردن ZIP به دلیل خاص';
+    final reason = await _askForReason(title: title);
+    if (reason == null || reason.isEmpty) return;
+
+    try {
+      if (result.isDirectory) {
+        final folder = Directory(result.path);
+        final oldName = FileManagerService.displayName(folder);
+        final newName = '$oldName - $reason';
+
+        final renamedFolder =
+            await FileManagerService.rename(folder, newName) as Directory;
+        await CustomerStatusService.transfer(folder.path, renamedFolder.path);
+
+        final parentPath = renamedFolder.parent.path;
+        final matchingZip = File(
+          [parentPath, '$oldName.zip'].join(Platform.pathSeparator),
+        );
+        if (await matchingZip.exists()) {
+          await FileManagerService.rename(matchingZip, newName);
+        }
+
+        await CustomerStatusService.markReceiptReceived(renamedFolder.path);
+      } else {
+        final zip = File(result.path);
+        final oldName = FileManagerService.displayName(zip);
+        final newName = '$oldName - $reason';
+
+        final renamedZip = await FileManagerService.rename(zip, newName) as File;
+        await CustomerStatusService.transfer(zip.path, renamedZip.path);
+        await CustomerStatusService.markReceiptReceived(renamedZip.path);
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('سبز شد و دلیل به نام آن اضافه شد.')),
+      );
+      await _refreshResults();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('خطا در سبز کردن: $e')));
+    }
   }
 
   // ----------------------------- دیالوگ‌های مشترک -----------------------------
@@ -506,6 +671,7 @@ class _SearchPageState extends State<SearchPage> {
         final result = _results[index];
         return _ResultTile(
           result: result,
+          status: _statusFor(result),
           onTap: () => _openResult(result),
           menu: _buildMenuFor(result),
         );
@@ -536,6 +702,9 @@ class _SearchPageState extends State<SearchPage> {
           case 'share':
             isDirectory ? _shareFolder(result) : _shareZip(result);
             break;
+          case 'greenReason':
+            _markGreenWithReason(result);
+            break;
           case 'delete':
             isDirectory ? _deleteFolder(result) : _deleteZip(result);
             break;
@@ -546,6 +715,10 @@ class _SearchPageState extends State<SearchPage> {
         const PopupMenuItem(value: 'rename', child: Text('تغییر نام')),
         if (isDirectory) const PopupMenuItem(value: 'zip', child: Text('زیپ کردن')),
         const PopupMenuItem(value: 'share', child: Text('اشتراک‌گذاری')),
+        const PopupMenuItem(
+          value: 'greenReason',
+          child: Text('سبز کردن (با دلیل)', style: TextStyle(color: Color(0xFF2E7D32))),
+        ),
         const PopupMenuItem(
           value: 'delete',
           child: Text('حذف', style: TextStyle(color: Color(0xFFE84C4C))),
@@ -566,10 +739,28 @@ class _SearchPageState extends State<SearchPage> {
 
 class _ResultTile extends StatelessWidget {
   final SearchResult result;
+  final ReminderStatus status;
   final VoidCallback onTap;
   final Widget menu;
 
-  const _ResultTile({required this.result, required this.onTap, required this.menu});
+  const _ResultTile({
+    required this.result,
+    required this.status,
+    required this.onTap,
+    required this.menu,
+  });
+
+  Widget _dot(Color color, {double size = 10}) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 1.5),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -595,7 +786,14 @@ class _ResultTile extends StatelessWidget {
                   color: color.withOpacity(.10),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Icon(icon, color: color, size: 28),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.center,
+                  children: [
+                    Icon(icon, color: color, size: 28),
+                    Positioned(right: 4, top: 4, child: _dot(status.dotColor)),
+                  ],
+                ),
               ),
               const SizedBox(width: 13),
               Expanded(
