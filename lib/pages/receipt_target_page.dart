@@ -56,6 +56,7 @@ class _ReceiptTargetPageState extends State<ReceiptTargetPage>
     final receipts = await CustomerStatusService.getReceiptKeys();
 
     if (!mounted) return;
+
     setState(() {
       _chargeFolders = charge;
       _issueFolders = issue;
@@ -75,27 +76,28 @@ class _ReceiptTargetPageState extends State<ReceiptTargetPage>
 
   List<Directory> _filtered(List<Directory> folders) {
     if (_query.isEmpty) return folders;
+
     return folders
-        .where((f) => FileManagerService.displayName(f).contains(_query))
+        .where(
+          (f) => FileManagerService.displayName(f).contains(_query),
+        )
         .toList();
   }
 
-  /// اگر پوشه هنوز قرمز (ارسال‌نشده) یا زرد (در انتظار رسید) باشد، قبل از
-  /// ثبت مستقیم رسید، یک هشدار رنگی داخل همان دیالوگ تأیید نشان داده
-  /// می‌شود تا کاربر با اطلاع کامل تصمیم بگیرد. برای پوشه‌ی سبز (رسید
-  /// قبلاً دریافت شده) دیالوگ بدون هشدار، مثل قبل، ساده باقی می‌ماند.
+  /// فقط برای پوشه‌ی قرمز (ارسال‌نشده) هشدار نمایش داده می‌شود.
+  /// پوشه‌ی زرد (ارسال شده و منتظر رسید) بدون هشدار ثبت می‌شود.
+  /// پوشه‌ی سبز نیز مثل قبل بدون هشدار ثبت می‌شود.
   Future<void> _selectCustomer(Directory folder) async {
     final name = FileManagerService.displayName(folder);
     final status = _statusFor(folder);
-    final needsWarning = status != ReminderStatus.receiptReceived;
 
-    final warningColor =
-        status == ReminderStatus.notSent ? const Color(0xFFDC2626) : const Color(0xFFB45309);
-    final warningBg =
-        status == ReminderStatus.notSent ? const Color(0xFFFEF2F2) : const Color(0xFFFFFBEB);
-    final warningText = status == ReminderStatus.notSent
-        ? 'این پوشه هنوز قرمز است؛ یعنی اصلاً برای سرپرست ارسال نشده.'
-        : 'این پوشه هنوز زرد است؛ یعنی ارسال شده ولی رسیدش هنوز نیامده.';
+    // فقط وضعیت قرمز باید هشدار داشته باشد.
+    final needsWarning = status == ReminderStatus.notSent;
+
+    final warningColor = const Color(0xFFDC2626);
+    final warningBg = const Color(0xFFFEF2F2);
+    const warningText =
+        'این پوشه هنوز قرمز است؛ یعنی اصلاً برای سرپرست ارسال نشده.';
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -130,8 +132,11 @@ class _ReceiptTargetPageState extends State<ReceiptTargetPage>
                     textDirection: TextDirection.rtl,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.warning_amber_rounded,
-                          color: warningColor, size: 22),
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        color: warningColor,
+                        size: 22,
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
@@ -177,7 +182,8 @@ class _ReceiptTargetPageState extends State<ReceiptTargetPage>
             ElevatedButton(
               onPressed: () => Navigator.pop(dialogContext, true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: needsWarning ? warningColor : _primaryBlue,
+                backgroundColor:
+                    needsWarning ? warningColor : _primaryBlue,
                 foregroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
@@ -211,7 +217,10 @@ class _ReceiptTargetPageState extends State<ReceiptTargetPage>
           content: Text(
             'رسید «$name» با موفقیت ثبت شد.',
             textDirection: TextDirection.rtl,
-            style: const TextStyle(fontFamily: 'Traffic', fontSize: 15),
+            style: const TextStyle(
+              fontFamily: 'Traffic',
+              fontSize: 15,
+            ),
           ),
           behavior: SnackBarBehavior.floating,
         ),
@@ -220,13 +229,18 @@ class _ReceiptTargetPageState extends State<ReceiptTargetPage>
       Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
+
       setState(() => _isSaving = false);
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             'خطا در ثبت رسید: $e',
             textDirection: TextDirection.rtl,
-            style: const TextStyle(fontFamily: 'Traffic', fontSize: 15),
+            style: const TextStyle(
+              fontFamily: 'Traffic',
+              fontSize: 15,
+            ),
           ),
           behavior: SnackBarBehavior.floating,
         ),
@@ -234,7 +248,10 @@ class _ReceiptTargetPageState extends State<ReceiptTargetPage>
     }
   }
 
-  Widget _buildEmptyState({required IconData icon, required String title}) {
+  Widget _buildEmptyState({
+    required IconData icon,
+    required String title,
+  }) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -248,7 +265,11 @@ class _ReceiptTargetPageState extends State<ReceiptTargetPage>
                 color: const Color(0xFFF2F6FF),
                 borderRadius: BorderRadius.circular(22),
               ),
-              child: Icon(icon, color: _primaryBlue, size: 34),
+              child: Icon(
+                icon,
+                color: _primaryBlue,
+                size: 34,
+              ),
             ),
             const SizedBox(height: 16),
             Text(
@@ -275,13 +296,17 @@ class _ReceiptTargetPageState extends State<ReceiptTargetPage>
       decoration: BoxDecoration(
         color: color,
         shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 1.5),
+        border: Border.all(
+          color: Colors.white,
+          width: 1.5,
+        ),
       ),
     );
   }
 
   Widget _buildFolderCard(Directory folder) {
-    final fileCount = FileManagerService.getFilesInFolder(folder).length;
+    final fileCount =
+        FileManagerService.getFilesInFolder(folder).length;
     final status = _statusFor(folder);
 
     return Padding(
@@ -293,7 +318,9 @@ class _ReceiptTargetPageState extends State<ReceiptTargetPage>
         borderRadius: BorderRadius.circular(20),
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
-          onTap: _isSaving ? null : () => _selectCustomer(folder),
+          onTap: _isSaving
+              ? null
+              : () => _selectCustomer(folder),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 11, 14, 11),
             child: Row(
@@ -310,7 +337,10 @@ class _ReceiptTargetPageState extends State<ReceiptTargetPage>
                   child: Stack(
                     clipBehavior: Clip.none,
                     children: [
-                      const Icon(Icons.folder_rounded, color: _purple),
+                      const Icon(
+                        Icons.folder_rounded,
+                        color: _purple,
+                      ),
                       Positioned(
                         right: -2,
                         top: -2,
@@ -382,7 +412,8 @@ class _ReceiptTargetPageState extends State<ReceiptTargetPage>
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(20, 2, 20, 24),
       itemCount: filtered.length,
-      itemBuilder: (context, index) => _buildFolderCard(filtered[index]),
+      itemBuilder: (context, index) =>
+          _buildFolderCard(filtered[index]),
     );
   }
 
@@ -395,7 +426,9 @@ class _ReceiptTargetPageState extends State<ReceiptTargetPage>
       textDirection: TextDirection.rtl,
       child: Theme(
         data: Theme.of(context).copyWith(
-          textTheme: Theme.of(context).textTheme.apply(fontFamily: 'Traffic'),
+          textTheme: Theme.of(context)
+              .textTheme
+              .apply(fontFamily: 'Traffic'),
         ),
         child: Scaffold(
           backgroundColor: _pageBackground,
@@ -408,12 +441,20 @@ class _ReceiptTargetPageState extends State<ReceiptTargetPage>
                     // هدر گرادیانی هماهنگ با بقیه‌ی صفحات برنامه
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.fromLTRB(22, 22, 22, 24),
+                      padding: const EdgeInsets.fromLTRB(
+                        22,
+                        22,
+                        22,
+                        24,
+                      ),
                       decoration: const BoxDecoration(
                         gradient: LinearGradient(
                           begin: Alignment.topRight,
                           end: Alignment.bottomLeft,
-                          colors: [Color(0xFF0D47C9), Color(0xFF1976E8)],
+                          colors: [
+                            Color(0xFF0D47C9),
+                            Color(0xFF1976E8),
+                          ],
                         ),
                         borderRadius: BorderRadius.only(
                           bottomLeft: Radius.circular(34),
@@ -435,7 +476,8 @@ class _ReceiptTargetPageState extends State<ReceiptTargetPage>
                           const SizedBox(width: 10),
                           Expanded(
                             child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
                               children: [
                                 const SizedBox(height: 4),
                                 Text(
@@ -469,7 +511,9 @@ class _ReceiptTargetPageState extends State<ReceiptTargetPage>
                     Transform.translate(
                       offset: const Offset(0, -8),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                        ),
                         child: Material(
                           color: Colors.white,
                           elevation: 4,
@@ -480,7 +524,8 @@ class _ReceiptTargetPageState extends State<ReceiptTargetPage>
                             labelColor: _primaryBlue,
                             unselectedLabelColor: _secondaryText,
                             indicatorColor: _primaryBlue,
-                            indicatorSize: TabBarIndicatorSize.label,
+                            indicatorSize:
+                                TabBarIndicatorSize.label,
                             indicatorWeight: 3,
                             dividerColor: Colors.transparent,
                             labelStyle: const TextStyle(
@@ -488,13 +533,20 @@ class _ReceiptTargetPageState extends State<ReceiptTargetPage>
                               fontSize: 15,
                               fontWeight: FontWeight.bold,
                             ),
-                            unselectedLabelStyle: const TextStyle(
+                            unselectedLabelStyle:
+                                const TextStyle(
                               fontFamily: 'Traffic',
                               fontSize: 15,
                             ),
                             tabs: const [
-                              Tab(height: 52, text: 'شارژ'),
-                              Tab(height: 52, text: 'صدور'),
+                              Tab(
+                                height: 52,
+                                text: 'شارژ',
+                              ),
+                              Tab(
+                                height: 52,
+                                text: 'صدور',
+                              ),
                             ],
                           ),
                         ),
@@ -502,7 +554,12 @@ class _ReceiptTargetPageState extends State<ReceiptTargetPage>
                     ),
 
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                      padding: const EdgeInsets.fromLTRB(
+                        20,
+                        0,
+                        20,
+                        10,
+                      ),
                       child: TextField(
                         controller: _searchController,
                         textDirection: TextDirection.rtl,
@@ -522,24 +579,28 @@ class _ReceiptTargetPageState extends State<ReceiptTargetPage>
                           ),
                           filled: true,
                           fillColor: Colors.white,
-                          contentPadding: const EdgeInsets.symmetric(
+                          contentPadding:
+                              const EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 14,
                           ),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(17),
+                            borderRadius:
+                                BorderRadius.circular(17),
                             borderSide: const BorderSide(
                               color: Color(0xFFE3E6EC),
                             ),
                           ),
                           enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(17),
+                            borderRadius:
+                                BorderRadius.circular(17),
                             borderSide: const BorderSide(
                               color: Color(0xFFE3E6EC),
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(17),
+                            borderRadius:
+                                BorderRadius.circular(17),
                             borderSide: const BorderSide(
                               color: _primaryBlue,
                               width: 1.5,
@@ -570,7 +631,9 @@ class _ReceiptTargetPageState extends State<ReceiptTargetPage>
                   Container(
                     color: Colors.black26,
                     child: const Center(
-                      child: CircularProgressIndicator(color: Colors.white),
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                      ),
                     ),
                   ),
               ],

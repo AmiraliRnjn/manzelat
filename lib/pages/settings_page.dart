@@ -10,6 +10,8 @@ import '../widgets/work_calendar_picker.dart';
 import 'backup_page.dart';
 import 'logs_page.dart';
 import 'home_page.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/gestures.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -780,11 +782,47 @@ class _SettingsPageState extends State<SettingsPage>
                                 ],
                               ),
                             ),
-                             Container(
-                              padding: EdgeInsets.only(top: 20),
-                              alignment: Alignment.center,
-                              child: Text('This App Build With 💙 By Knightra Team',style: TextStyle(fontWeight: FontWeight.w500),),
-                            )
+Container(
+  padding: const EdgeInsets.only(top: 20),
+  alignment: Alignment.center,
+  child: RichText(
+    text: TextSpan(
+      style: const TextStyle(
+        color: Colors.black87,
+        fontWeight: FontWeight.w500,
+      ),
+      children: [
+        const TextSpan(
+          text: 'This App Build With 💙 By ',
+        ),
+        TextSpan(
+          text: 'Knightra',
+          style: const TextStyle(
+            color: Color(0xFF1565C0),
+            fontWeight: FontWeight.bold,
+            decoration: TextDecoration.underline,
+          ),
+          recognizer: TapGestureRecognizer()
+            ..onTap = () async {
+              final uri = Uri.parse(
+                'https://knightra-team.github.io/Knightra-website/',
+              );
+
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(
+                  uri,
+                  mode: LaunchMode.externalApplication,
+                );
+              }
+            },
+        ),
+        const TextSpan(
+          text: ' Team',
+        ),
+      ],
+    ),
+  ),
+)
                           ],
                         ),
                       ),
