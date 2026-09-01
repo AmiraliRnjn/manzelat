@@ -1,3 +1,4 @@
+
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -290,7 +291,7 @@ class FileManagerService {
       final encoder = ZipFileEncoder();
       try {
         encoder.create(partPath);
-        await encoder.addDirectory(folder, includeDirName: false);
+        await encoder.addDirectory(folder, includeDirName: true);
       } finally {
         await encoder.close();
       }

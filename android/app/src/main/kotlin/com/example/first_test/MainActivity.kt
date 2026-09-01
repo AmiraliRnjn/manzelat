@@ -219,7 +219,7 @@ class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
                     ((uid[2].toLong() and 0xFF) shl 16) or
                     ((uid[3].toLong() and 0xFF) shl 24)
 
-                ticketNumber = value.toString()
+                ticketNumber = value.toString().padStart(10, '0')
             }
 
             Handler(Looper.getMainLooper()).post {
