@@ -1,4 +1,3 @@
-
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -342,21 +341,22 @@ class FileManagerService {
   /// گذاشته می‌شود تا با ZIPهای واقعی مشتری‌ها اشتباه گرفته نشود.
   static const String allZipsFileName = 'زیپ همه فایلها برای ارسال';
 
-  /// همه‌ی ZIP‌های موجود (به‌جز خودِ ZIP ترکیبی قبلی، اگر باشد) را در یک
-  /// ZIP واحد به نام [allZipsFileName] در همان پوشه‌ی روز قرار می‌دهد.
+  /// همه‌ی پوشه‌های مشتری (به‌جای ZIPهای‌شان) را در یک ZIP واحد به نام
+  /// [allZipsFileName] در همان پوشه‌ی روز قرار می‌دهد؛ هر مشتری داخل این
+  /// ZIP ترکیبی، خودش یک پوشه‌ی جداست (دقیقاً همان منطق [zipCustomerFolder]).
   /// فایل‌های اصلی مشتری‌ها دست‌نخورده باقی می‌مانند؛ فقط یک نسخه از
   /// آن‌ها داخل ZIP جدید کپی می‌شود.
   ///
-  /// اگر [zipsOverride] داده شود، فقط همان فایل‌ها ترکیب می‌شوند (مثلاً
+  /// اگر [foldersOverride] داده شود، فقط همان پوشه‌ها ترکیب می‌شوند (مثلاً
   /// وقتی کاربر فقط سبزها/انجام‌شده‌ها را می‌خواهد زیپ کند)؛ در غیر این
-  /// صورت همه‌ی ZIPهای روز (به‌جز ZIP ترکیبی قبلی) ترکیب می‌شوند.
+  /// صورت همه‌ی پوشه‌های مشتری روز ترکیب می‌شوند.
   ///
-  /// اگر نام (بدون پسوند) یکی از فایل‌ها داخل [markIncompleteNames] باشد،
-  /// همان فایل داخل آرشیو با پیشوند «انجام نشده - » ذخیره می‌شود تا وقتی
-  /// روی سیستم/لپ‌تاپ باز شد، مشخص باشد کدام مشتری هنوز رسیدش نیامده.
+  /// اگر نام یکی از پوشه‌ها داخل [markIncompleteNames] باشد، همان پوشه
+  /// داخل آرشیو با پیشوند «انجام نشده - » ذخیره می‌شود تا وقتی روی
+  /// سیستم/لپ‌تاپ باز شد، مشخص باشد کدام مشتری هنوز رسیدش نیامده.
   static Future<File> zipAllCustomerZips(
     OperationType operationType, {
-    List<File>? zipsOverride,
+    List<Directory>? foldersOverride,
     Set<String> markIncompleteNames = const {},
   }) async {
     final dayFolder = await getDayFolder(operationType);
@@ -364,13 +364,10 @@ class FileManagerService {
       throw FileSystemException('پوشه‌ی این تاریخ وجود ندارد.');
     }
 
-    final zips = zipsOverride ??
-        (await getCustomerZipFiles(operationType))
-            .where((f) => displayName(f) != allZipsFileName)
-            .toList();
+    final folders = foldersOverride ?? await getCustomerFolders(operationType);
 
-    if (zips.isEmpty) {
-      throw FileSystemException('فایل ZIP‌ای برای ترکیب کردن وجود ندارد.');
+    if (folders.isEmpty) {
+      throw FileSystemException('پوشه‌ی مشتری‌ای برای ترکیب کردن وجود ندارد.');
     }
 
     final zipPath = [
@@ -386,19 +383,38 @@ class FileManagerService {
       final encoder = ZipFileEncoder();
       try {
         encoder.create(part.path);
-        for (final zip in zips) {
-          final stat = await zip.stat();
-          if (stat.size <= 0) {
+        for (final folder in folders) {
+          final name = displayName(folder);
+          final archiveFolderName = markIncompleteNames.contains(name)
+              ? 'انجام نشده - $name'
+              : name;
+
+          final files = <File>[];
+          await for (final entity
+              in folder.list(recursive: true, followLinks: false)) {
+            if (entity is! File) continue;
+            final stat = await entity.stat();
+            if (stat.size <= 0) {
+              throw FileSystemException(
+                'فایل صفر بایت در پوشه مشتری وجود دارد.',
+                entity.path,
+              );
+            }
+            files.add(entity);
+          }
+          if (files.isEmpty) {
             throw FileSystemException(
-              'فایل ZIP صفر بایت وجود دارد.',
-              zip.path,
+              'پوشه مشتری هیچ فایلی ندارد.',
+              folder.path,
             );
           }
-          final name = displayName(zip);
-          final archiveName = markIncompleteNames.contains(name)
-              ? 'انجام نشده - $name.zip'
-              : '$name.zip';
-          await encoder.addFile(zip, archiveName);
+
+          for (final file in files) {
+            final relativePath = file.path
+                .substring(folder.path.length + 1)
+                .replaceAll(Platform.pathSeparator, '/');
+            await encoder.addFile(file, '$archiveFolderName/$relativePath');
+          }
         }
       } finally {
         await encoder.close();

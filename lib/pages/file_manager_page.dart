@@ -224,17 +224,18 @@ class _FileManagerPageState extends State<FileManagerPage> with RouteAware {
     }
   }
 
-  /// همه‌ی ZIP‌های موجود این تاریخ را در یک ZIP واحد به نام
-  /// [FileManagerService.allZipsFileName] ترکیب می‌کند تا بشود یک‌جا
-  /// برای سرپرست ارسال کرد. نتیجه در همین تب ZIP نمایش داده می‌شود.
+  /// همه‌ی پوشه‌های مشتری این تاریخ را در یک ZIP واحد به نام
+  /// [FileManagerService.allZipsFileName] ترکیب می‌کند (هر مشتری داخلش یک
+  /// پوشه‌ی جداست) تا بشود یک‌جا برای سرپرست ارسال کرد. نتیجه در همین تب
+  /// ZIP نمایش داده می‌شود.
   ///
-  /// اگر بین ZIPها فایل قرمز (ارسال‌نشده) یا زرد (در انتظار رسید) باشد،
+  /// اگر بین مشتری‌ها کسی قرمز (ارسال‌نشده) یا زرد (در انتظار رسید) باشد،
   /// قبل از ادامه از کاربر می‌پرسیم: فقط انجام‌شده‌ها (سبزها) زیپ شوند،
   /// یا انجام‌نشده‌ها نادیده گرفته شوند و همه یک‌جا زیپ شوند. در حالت دوم،
-  /// نام فایل‌های انجام‌نشده داخل خودِ ZIP ترکیبی با «انجام نشده - »
+  /// نام پوشه‌های انجام‌نشده داخل خودِ ZIP ترکیبی با «انجام نشده - »
   /// مشخص می‌شود تا روی سیستم/لپ‌تاپ هم معلوم باشد.
   Future<void> _zipAllForSending() async {
-    final combinable = zipFiles
+    final combinable = customerFolders
         .where(
           (f) =>
               FileManagerService.displayName(f) !=
@@ -244,12 +245,12 @@ class _FileManagerPageState extends State<FileManagerPage> with RouteAware {
 
     if (combinable.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('فایل ZIP‌ای برای ترکیب کردن وجود ندارد.')),
+        const SnackBar(content: Text('پوشه مشتری‌ای برای ترکیب کردن وجود ندارد.')),
       );
       return;
     }
 
-    // هر فایلی که رسیدش نیامده (چه قرمز/ارسال‌نشده، چه زرد/در انتظار
+    // هر مشتری‌ای که رسیدش نیامده (چه قرمز/ارسال‌نشده، چه زرد/در انتظار
     // رسید) «بدون رسید» حساب می‌شود.
     final incomplete = combinable
         .where((f) => _statusFor(f) != ReminderStatus.receiptReceived)
@@ -258,7 +259,7 @@ class _FileManagerPageState extends State<FileManagerPage> with RouteAware {
         .where((f) => _statusFor(f) == ReminderStatus.receiptReceived)
         .toList();
 
-    List<File> zipsToCombine = combinable;
+    List<Directory> foldersToCombine = combinable;
     Set<String> incompleteNamesToMark = {};
 
     if (incomplete.isNotEmpty) {
@@ -270,16 +271,16 @@ class _FileManagerPageState extends State<FileManagerPage> with RouteAware {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('هیچ فایل انجام‌شده‌ای (سبز) برای زیپ کردن وجود ندارد.'),
+              content: Text('هیچ مشتری انجام‌شده‌ای (سبز) برای زیپ کردن وجود ندارد.'),
             ),
           );
           return;
         }
-        zipsToCombine = completedOnly;
+        foldersToCombine = completedOnly;
       } else {
         // نادیده گرفتن انجام‌نشده‌ها: همه با هم زیپ می‌شوند، ولی نام
-        // فایل‌های ناقص داخل آرشیو مشخص می‌شود.
-        zipsToCombine = combinable;
+        // پوشه‌های ناقص داخل آرشیو مشخص می‌شود.
+        foldersToCombine = combinable;
         incompleteNamesToMark = incomplete
             .map((f) => FileManagerService.displayName(f))
             .toSet();
@@ -305,7 +306,7 @@ class _FileManagerPageState extends State<FileManagerPage> with RouteAware {
     try {
       await FileManagerService.zipAllCustomerZips(
         widget.operationType,
-        zipsOverride: zipsToCombine,
+        foldersOverride: foldersToCombine,
         markIncompleteNames: incompleteNamesToMark,
       );
 
